@@ -90,3 +90,11 @@
 **Context**: INCEPTION - User Stories, Step 19-20.
 
 ---
+
+## User Stories - Change Request (Visual Accuracy)
+**Timestamp**: 2026-06-11T00:07:00Z
+**User Input**: "Make sure it's visually accurate to Icelandic parliment buildings."
+**AI Response**: Researched Alþingishúsið (Icelandic Parliament House) and Stjórnarráðshúsið (Government House) architecture. Added US-25 (Architecturally Accurate Environment Textures) with detailed acceptance criteria based on real architectural features: dark dolerite exterior stone, cream plastered interiors, neoclassical detailing, dark wood, brass accents, deep blue carpet, small-country scale. Also added FR-11 to requirements.md with full architectural reference. Updated US-09 to cross-reference visual authenticity.
+**Context**: INCEPTION - User Stories, change request incorporated. Re-presenting for approval.
+
+---

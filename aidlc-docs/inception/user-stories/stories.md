@@ -88,7 +88,7 @@ Stories are organized by game system (feature-based breakdown). Each story targe
 ## Epic 3: Level Design & Rendering
 
 ### US-09: Raycaster Rendering
-**As a** player, **I want to** see a 3D first-person view of the level **so that** I feel immersed in the parliament building.
+**As a** player, **I want to** see a 3D first-person view of the level **so that** I feel immersed in the Icelandic parliament building.
 
 **Acceptance Criteria:**
 - [ ] Walls render with correct perspective (closer walls taller, farther walls shorter)
@@ -96,6 +96,7 @@ Stories are organized by game system (feature-based breakdown). Each story targe
 - [ ] Floor and ceiling are rendered (solid color or textured)
 - [ ] Consistent 60fps on modern browsers
 - [ ] Distinct visual styles for lobby section vs. committee corridor section
+- [ ] Visual style is architecturally faithful to Alþingishúsið and Icelandic government buildings (see US-25)
 
 ### US-10: Sprite Rendering
 **As a** player, **I want to** see enemies and pickups as sprites in the 3D view **so that** I can identify and interact with them.
@@ -249,6 +250,38 @@ Stories are organized by game system (feature-based breakdown). Each story targe
 
 ---
 
+## Epic 8: Visual Authenticity (Icelandic Parliament Architecture)
+
+### US-25: Architecturally Accurate Environment Textures
+**As a** player, **I want** the level to visually evoke real Icelandic parliament and government buildings **so that** the satire feels grounded in a recognizable setting.
+
+**Acceptance Criteria:**
+- [ ] **Exterior/Structural Walls**: Dark hewn dolerite (basalt) stone texture — the iconic near-black rough-cut stone of Alþingishúsið's exterior, used for structural/outer corridor walls
+- [ ] **Interior Walls**: Smooth white/cream plastered walls (reflecting Alþingishúsið's interior finish), with subtle wainscoting or chair-rail detail where appropriate
+- [ ] **Floors**: Dark polished stone or dark wood parquet patterns (consistent with 19th-century Nordic institutional buildings)
+- [ ] **Doors**: Dark-stained wooden doors with simple neoclassical panel detailing and brass/bronze hardware
+- [ ] **Committee Corridor Section**: Repeating identical doorways along cream-plastered walls (the "endless committee rooms" joke grounded in real architecture)
+- [ ] **Lobby/Entry Section**: Taller ceilings implied through texture scale, exposed dark stone accents, neoclassical archways or pilasters
+- [ ] **Ceiling**: Ornate plaster ceiling details (coffered or molded patterns) rendered as ceiling texture
+- [ ] **Windows**: Tall, narrow windows with volcanic landscape/erupting volcano visible through them (per the brief's recurring gag — everyone inside ignores it)
+- [ ] **Decorative Elements**: Period-appropriate wall sconces, portrait frames (satirical — portraits of "nobody in particular"), Icelandic coat of arms motifs
+- [ ] **Color Palette**: Muted institutional tones — dark basalt gray, cream/off-white plaster, dark wood browns, brass accents, deep blue carpet (Alþingi chamber color)
+- [ ] **Annex Transition**: Visual shift when entering "committee wing" — slightly more modern materials (the 1908 Kringlan rotunda and 2002 Skálinn extension as inspiration for newer bureaucratic areas)
+
+**Visual Reference Notes** (for texture artists/generation):
+The primary architectural references are:
+1. **Alþingishúsið** (Parliament House, 1881): Neoclassical, dark Icelandic dolerite exterior, plastered interiors, designed by Ferdinand Meldahl
+2. **Stjórnarráðshúsið** (Government House/PM Office): 18th-century converted building, similar plastered interiors with formal character
+3. **Surrounding Austurvöllur government district**: Mix of 19th-century stone buildings and 20th-century functional annexes
+
+The game should read as "clearly this is an Icelandic government building" through:
+- The distinctive dark volcanic stone (unique to Iceland)
+- Nordic neoclassical restraint (not ornate like British parliament, not modernist — somewhere in between)
+- Small-country scale (intimate rooms, not grand halls)
+- Specific details: the 1881 date motif, stars pattern, simple but dignified furnishings
+
+---
+
 ## INVEST Criteria Validation
 
 | Story | Independent | Negotiable | Valuable | Estimable | Small | Testable |
@@ -277,5 +310,6 @@ Stories are organized by game system (feature-based breakdown). Each story targe
 | US-22 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | US-23 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | US-24 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| US-25 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-All 24 stories meet INVEST criteria.
+All 25 stories meet INVEST criteria.
