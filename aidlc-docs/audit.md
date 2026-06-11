@@ -173,3 +173,20 @@
 **Context**: CONSTRUCTION - Functional Design complete. Presenting for approval.
 
 ---
+
+## Functional Design - Approval
+**Timestamp**: 2026-06-11T00:15:00Z
+**User Input**: "Approved"
+**AI Response**: Functional design approved. Proceeding to NFR Requirements.
+**Context**: CONSTRUCTION - Functional Design complete. Next: NFR Requirements.
+
+---
+
+## NFR Requirements - Answers Received & Artifacts Generated
+**Timestamp**: 2026-06-11T00:16:00Z
+**User Input**: "Done"
+**Answers**: Q1: B (standard strict), Q2: A (Vitest + fast-check), Q3: A (desktop only)
+**AI Response**: No ambiguities. Generated nfr-requirements.md (performance targets, frame budget, browser compat, rendering optimizations, reliability, maintainability) and tech-stack-decisions.md (TypeScript 5.5+, Vite 6.x, Vitest 3.x, fast-check 3.x, dual-canvas rendering strategy, asset pipeline, deployment approach).
+**Context**: CONSTRUCTION - NFR Requirements complete. Presenting for approval.
+
+---
