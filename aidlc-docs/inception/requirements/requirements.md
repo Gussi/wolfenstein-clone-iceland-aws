@@ -14,14 +14,14 @@
 
 | Decision | Choice |
 |----------|--------|
-| Platform | Web browser only (HTML5) |
-| Language | TypeScript |
-| Framework | Lightweight game library (Phaser or PixiJS) |
+| Platform | Web browser only (HTML5 + WebAssembly) |
+| Language | Rust (edition 2024), compiled to wasm32-unknown-unknown |
+| Framework | None — pure Rust + web-sys; Canvas 2D raycaster (no game library) |
 | Textures | Pixel art at 128x128 or 256x256 resolution |
 | Audio | Icelandic-influenced soundtrack + sound effects |
-| Map Format | JSON/YAML files loaded at runtime |
+| Map Format | JSON files loaded at runtime (serde) |
 | Hosting | No specific cloud requirement (no AWS services) |
-| Testing | Partial property-based testing (pure functions, serialization) |
+| Testing | Partial property-based testing (cargo test + proptest) on pure functions + serialization |
 | Security | Not enforced (prototype-grade) |
 
 ---
@@ -128,7 +128,7 @@
 - Edge (latest 2 versions)
 
 ### NFR-03: Code Quality
-- TypeScript strict mode
+- Idiomatic safe Rust (clippy clean, rustfmt enforced)
 - Modular architecture (separate rendering, game logic, input, audio)
 - Property-based tests for pure functions and serialization (map loading, math utilities)
 

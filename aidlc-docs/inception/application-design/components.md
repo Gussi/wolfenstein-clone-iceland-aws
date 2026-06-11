@@ -1,216 +1,164 @@
-# Components — "Pots & Parliament"
+# Components — "Pots & Parliament" (Rust)
 
-## Component Overview
+## Overview
 
-The game is structured as a set of cooperating systems coordinated by a main game loop. Each component has a clear responsibility and communicates through a shared game state object.
+> **Design note:** In Rust these are not 11 objects holding references to each other. They are **modules**: most are pure *systems* (free functions operating on data borrowed from the owning `World`); a few are *boundaries* expressed as **traits** (`Surface`, `InputSource`, `AudioSink`, `AssetSource`) with `web-sys` implementations. The orchestrator (`App`) owns the `World` and the trait objects and drives one frame per `requestAnimationFrame` callback. Call surfaces are in `component-methods.md`.
 
----
-
-## Component 1: GameLoop
-
-**Purpose**: Master orchestrator — runs the fixed-timestep game loop, coordinates all systems per frame.
-
-**Responsibilities:**
-- Initialize all other components
-- Run the update/render cycle at 60fps using requestAnimationFrame
-- Maintain delta time and fixed timestep for physics/logic
-- Manage game states (loading, playing, paused, game-over, victory)
-- Handle window resize events
-
-**Key Interfaces:**
-- `start()` — Begin the game loop
-- `stop()` — Halt the game loop
-- `setState(state)` — Transition between game states
+| # | Module | Kind | Replaces (TS) |
+|---|--------|------|---------------|
+| 1 | `app` | Orchestrator (owns `World` + boundaries) | GameLoop |
+| 2 | `raycaster` + `sprites` | Pure system → `Framebuffer`; `Surface` trait presents | Renderer |
+| 3 | `map` | Data + pure functions | MapSystem |
+| 4 | `input` | `InputSource` trait | InputSystem |
+| 5 | `movement` | Pure system over `Player` | Player |
+| 6 | `entities` (data on `World`) | Data + query helpers | EntitySystem |
+| 7 | `ai` | Pure system | EnemyAI |
+| 8 | `combat` | Pure system | CombatSystem |
+| 9 | `audio` | `AudioSink` trait | AudioSystem |
+| 10 | `hud` | Pure system → `Framebuffer` | HUDRenderer |
+| 11 | `assets` | `AssetSource` trait (async) | AssetLoader |
 
 ---
 
-## Component 2: Renderer (Raycaster)
+## 1. `app` — Orchestrator
 
-**Purpose**: Renders the 3D perspective view using raycasting on a Canvas 2D context.
+**Purpose**: Owns the `World` and the platform boundaries; advances and renders one frame per rAF callback.
 
 **Responsibilities:**
-- Cast rays from player position to determine wall distances
-- Draw textured vertical wall strips with perspective correction
-- Render floor and ceiling (solid color or textured)
-- Render sprites (enemies, pickups, decorations) with depth sorting
-- Handle different wall texture types based on map data
-- Scale render resolution for retro pixel effect
+- Construct the `World` and boundary impls; hold the `Framebuffer`/z-buffer
+- Compute delta time from rAF timestamps and run the per-frame system pipeline
+- Manage `GameStatus` transitions (loading → intro → playing → paused → game over/victory)
+- Forward resize events to the `Surface`
 
-**Key Interfaces:**
-- `render(state)` — Draw one frame based on current game state
-- `resize(width, height)` — Handle viewport resize
-- `setRenderScale(scale)` — Adjust internal render resolution
+**Key surface:** `App::tick(now_ms)`, `set_status`, `status`. The rAF `Closure` lifecycle is owned by the wasm entry point, not the orchestrator.
 
 ---
 
-## Component 3: MapSystem
+## 2. `raycaster` + `sprites` — Rendering (pure) behind the `Surface` boundary
 
-**Purpose**: Loads, stores, and provides access to level data.
+**Purpose**: Produce the 3D view by writing RGBA pixels into a `Framebuffer`; the `Surface` trait blits it to the canvas.
 
 **Responsibilities:**
-- Parse JSON map files into internal grid representation
-- Provide tile lookup by grid coordinates (wall type, floor type, entity)
-- Track door states (open, closed, opening, closing)
-- Track push-wall states and positions
-- Provide raycasting-compatible grid access (is solid, get texture ID)
+- DDA wall casting with perpendicular-distance correction; write textured vertical strips
+- Fill a per-column z-buffer for sprite occlusion
+- Depth-sort and draw sprites (enemies, pickups, decorations) back-to-front
+- Distance-based shading; transparent color-key sprites
+- `Surface` impl wraps the buffer as `ImageData`, `putImageData`s to a 640×400 offscreen canvas, and scales to the window
 
-**Key Interfaces:**
-- `loadMap(mapData)` — Parse and store map from JSON
-- `getTile(x, y)` — Get tile data at grid position
-- `isSolid(x, y)` — Check if tile blocks movement/rays
-- `getDoors()` — Get all door entities with states
-- `getPushWalls()` — Get all push-wall entities with states
+**Key surface:** `cast_walls(...)`, `render_sprites(...)` (pure); `Surface::present`, `Surface::resize`.
 
 ---
 
-## Component 4: InputSystem
+## 3. `map` — Level data
 
-**Purpose**: Captures and normalizes keyboard and mouse input.
+**Purpose**: Parse, store, and query level data; animate doors and push-walls.
 
 **Responsibilities:**
-- Listen for keyboard events (WASD, E/Space for interaction)
-- Listen for mouse movement (pointer lock for rotation)
-- Normalize input into action flags (moveForward, strafeLeft, interact, attack)
-- Handle pointer lock request/release
-- Provide frame-by-frame input state
+- `serde` parse + validate JSON into a flat row-major `Map` (returns `Result<Map, MapError>`)
+- Tile lookup and bounds-checked solidity queries for raycasting and collision
+- Track and animate door (`Closed/Opening/Open`) and push-wall (`Hidden/Sliding/Open`) state, flipping tile solidity
 
-**Key Interfaces:**
-- `init(canvas)` — Attach event listeners, request pointer lock
-- `getInput()` — Return current frame's input state
-- `reset()` — Clear one-shot inputs (interact, attack) after processing
+**Key surface:** `parse_map(json) -> Result`, `Map::tile`, `Map::is_solid`, `animate_map`, `open_door`, `activate_push_wall`.
 
 ---
 
-## Component 5: Player
+## 4. `input` — `InputSource` boundary
 
-**Purpose**: Manages player state, movement, and collision.
+**Purpose**: Capture keyboard + mouse and normalize to an `InputState` snapshot.
 
 **Responsibilities:**
-- Store player position (x, y), direction angle, and movement speed
-- Process movement input with collision detection against map
-- Handle wall sliding on diagonal collisions
-- Manage player health (patience meter)
-- Track current weapon state
-- Handle interaction range checks (doors, push-walls, pickups)
+- Register `web-sys` listeners (WASD, E/Space, mouse move, click) writing into shared state
+- Request/track Pointer Lock
+- Provide an edge-cleared snapshot per frame
 
-**Key Interfaces:**
-- `update(input, deltaTime)` — Move player based on input
-- `takeDamage(amount)` — Reduce health, return alive status
-- `heal(amount)` — Restore health up to max
-- `getPosition()` — Return current x, y, angle
-- `canInteract(target)` — Check if target is within interaction range
+**Key surface:** `InputSource::poll() -> InputState`, `pointer_locked()`.
 
 ---
 
-## Component 6: EntitySystem
+## 5. `movement` — Player system (pure)
 
-**Purpose**: Manages all non-player entities (enemies, pickups, decorations).
+**Purpose**: Move the player from input with wall-sliding collision; manage health.
 
 **Responsibilities:**
-- Store and update all entity instances
-- Provide entity lookup by position (for rendering, collision)
-- Remove entities when destroyed/collected
-- Spawn entities from map data on level load
-- Track entity visibility (for sprite rendering depth sort)
+- Translate input into movement; rotate from mouse and recompute `dir`/`plane` from `angle`
+- Axis-independent collision (slide along walls) via the `blocked` predicate
+- `damage_player` (saturating) / `heal_player` (clamped); interaction-range checks
 
-**Key Interfaces:**
-- `spawnFromMap(mapData)` — Create all entities defined in map
-- `update(state, deltaTime)` — Update all entities
-- `getVisibleEntities(playerPos, playerAngle, fov)` — Get entities in view for rendering
-- `removeEntity(id)` — Remove entity from world
-- `getEntitiesAt(x, y, radius)` — Spatial query for collision
+**Key surface:** `update_player`, `damage_player`, `heal_player`, `Player::can_interact`.
 
 ---
 
-## Component 7: EnemyAI
+## 6. `entities` — Entity data on `World`
 
-**Purpose**: Controls enemy behavior — patrol, detection, pursuit, attack.
+**Purpose**: Hold and query enemies, pickups, and decorations.
 
 **Responsibilities:**
-- Implement Red Tape enemy behavior state machine (idle → patrol → alert → pursue → attack)
-- Line-of-sight detection to player
-- Pathfinding toward player (simple grid-based, no complex A*)
-- Attack timing and cooldown
-- Stun state management (stun threshold, stun animation timer)
+- Own `Vec<Enemy>`, `Vec<Pickup>`, `Vec<Decoration>` on `World`
+- Spawn from map defs at level construction; allocate `EntityId`s
+- Spatial queries (`enemies_in_range` as a lazy iterator); removal via `Vec::retain`
 
-**Key Interfaces:**
-- `update(enemy, state, deltaTime)` — Tick one enemy's AI
-- `canSeePlayer(enemy, playerPos, map)` — Line-of-sight check
-- `onHit(enemy, damage)` — Process hit, check if stunned/dispersed
+**Key surface:** `World::spawn_from_map`, `World::alive_enemy_count`, `World::enemies_in_range`.
 
 ---
 
-## Component 8: CombatSystem
+## 7. `ai` — Enemy behavior (pure)
 
-**Purpose**: Handles weapon attacks, hit detection, and damage application.
+**Purpose**: Drive the Red Tape state machine (idle → alert → pursue → attack, plus stunned/dispersing).
 
 **Responsibilities:**
-- Process attack input (check weapon cooldown, start attack animation)
-- Determine hit: check if enemy is within weapon range and in front of player
-- Apply stun damage to hit enemies
-- Track weapon animation state (idle, swinging, recovering)
-- Trigger hit feedback events (screen flash, sound cue)
+- Per-enemy tick reading `world.player` + `world.map`, writing the enemy
+- Line-of-sight detection (DDA) and simple grid pursuit (no A*)
+- Attack timing/cooldown; stun handling; apply-hit resolution
 
-**Key Interfaces:**
-- `attack(player, entities)` — Execute attack, return hit results
-- `getWeaponState()` — Return current weapon animation frame
-- `isReady()` — Check if weapon can attack (cooldown elapsed)
+**Key surface:** `update_enemies(world, dt)`, `can_see_player`, `apply_hit -> HitResult`.
 
 ---
 
-## Component 9: AudioSystem
+## 8. `combat` — Weapon & hit detection (pure)
 
-**Purpose**: Loads and plays sound effects and music.
+**Purpose**: Resolve wooden-spoon attacks against enemies.
 
 **Responsibilities:**
-- Preload audio assets (Web Audio API)
-- Play one-shot sound effects (attack, hit, pickup, door, secret)
-- Play looping ambient/music tracks
-- Handle audio context initialization (requires user gesture)
-- Volume control and muting
+- Gate on weapon readiness; advance swing/recover phases
+- Range + arc cone test; hit the single closest valid enemy
+- Report an `AttackOutcome` for the orchestrator to turn into sound/score
 
-**Key Interfaces:**
-- `init()` — Create audio context (on first user interaction)
-- `loadSounds(manifest)` — Preload all audio files
-- `play(soundId)` — Play a one-shot sound effect
-- `playMusic(trackId)` — Start looping music
-- `stopMusic()` — Stop current music
+**Key surface:** `resolve_attack(world) -> AttackOutcome`, `update_weapon`, `Weapon::is_ready/frame`.
 
 ---
 
-## Component 10: HUDRenderer
+## 9. `audio` — `AudioSink` boundary
 
-**Purpose**: Draws the Wolf3D-style bottom HUD bar and overlays.
+**Purpose**: Play sound effects (closed `Sound` enum) and looping music.
 
 **Responsibilities:**
-- Render health bar/number
-- Render weapon sprite and attack animation
-- Render face portrait with expression states
-- Render connections score counter
-- Render text overlays (intro text, enemy taunts, game over, victory)
-- Render level-complete stats screen
+- Own the `AudioContext` and decoded `AudioBuffer`s keyed by `Sound`
+- One-shot SFX via fresh `AudioBufferSourceNode`; looping music; volume/mute
+- Lazy context init on first user gesture
 
-**Key Interfaces:**
-- `render(state, canvas)` — Draw HUD over the game view
-- `showText(text, duration)` — Display temporary text overlay
-- `showStats(stats)` — Display end-of-level statistics
+**Key surface:** `AudioSink::play(Sound)`, `play_music`, `stop_music`, `set_volume`, `set_muted`.
 
 ---
 
-## Component 11: AssetLoader
+## 10. `hud` — HUD rendering (pure)
 
-**Purpose**: Loads and caches all game assets (textures, sprites, audio, maps).
+**Purpose**: Draw the Wolf3D-style bottom bar and text overlays into the `Framebuffer`.
 
 **Responsibilities:**
-- Load image files as ImageBitmap/HTMLImageElement for texture sampling
-- Load JSON map files
-- Load audio files as AudioBuffer
-- Provide loading progress for a loading screen
-- Cache loaded assets for reuse
+- Health, connections counter, weapon sprite, face portrait (`FaceExpression` by health band)
+- Overlays: intro text, enemy taunts, game over, victory/stats
 
-**Key Interfaces:**
-- `loadAll(manifest)` — Load all assets, report progress
-- `getTexture(id)` — Retrieve loaded texture
-- `getSound(id)` — Retrieve loaded audio buffer
-- `getMap(id)` — Retrieve loaded map data
-- `onProgress(callback)` — Progress reporting
+**Key surface:** `render_hud(view: &HudView, textures, fb)`.
+
+---
+
+## 11. `assets` — `AssetSource` boundary (async)
+
+**Purpose**: Fetch textures, audio, and maps; report progress.
+
+**Responsibilities:**
+- `fetch` bytes/text via `web-sys` + `wasm-bindgen-futures`, returning `Result`
+- Decode textures into RGBA `Vec<u8>` arrays held in a `TextureSet`
+- Progress callback for the loading bar
+
+**Key surface:** `AssetSource::load_bytes/load_text` (async), `on_progress`.

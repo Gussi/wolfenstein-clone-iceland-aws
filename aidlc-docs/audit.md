@@ -190,3 +190,46 @@
 **Context**: CONSTRUCTION - NFR Requirements complete. Presenting for approval.
 
 ---
+
+## NFR Requirements - Change Request (Tech Stack: TypeScript → Rust/wasm)
+**Timestamp**: 2026-06-11T00:17:00Z
+**User Input**: "Bring our workspace into context, I'd like to change some decisions about our tech start. I'd like to switch from using TypeScript over to Rust and export as wasm."
+**AI Response**: Brought workspace into context (aidlc-state.md, nfr-requirements.md, tech-stack-decisions.md, functional/application design references). Identified this as a change request to the CONSTRUCTION - NFR Requirements stage, where the TypeScript/Vite/Vitest+fast-check stack was decided. Core direction (Rust compiled to WebAssembly) is clear, but several dependent decisions require clarification (build toolchain, rendering bridge from Rust to canvas, JS glue boundary, testing/PBT library, Rust edition). Created prototype-nfr-rust-migration-questions.md with 5 questions. Did NOT modify tech-stack-decisions.md yet — awaiting answers. Noted downstream impact: domain-entities.md, component-methods.md (TypeScript interfaces) and application-design artifacts will need updating after decisions are confirmed.
+**Context**: CONSTRUCTION - NFR Requirements, change request. Awaiting user answers to migration questions.
+
+---
+
+## NFR Requirements - Migration Answers Received & Artifacts Updated
+**Timestamp**: 2026-06-11T00:18:00Z
+**User Input**: "Done"
+**Answers**: Q1: A (Trunk), Q2: A (pixel buffer + putImageData), Q3: A (Rust owns nearly everything via web-sys), Q4: A (cargo test + proptest), Q5: B (stable Rust, edition 2024)
+**AI Response**: No ambiguities. Rewrote tech-stack-decisions.md for the Rust/wasm stack (Rust 2024 edition, wasm32-unknown-unknown target, wasm-bindgen/web-sys/js-sys, Trunk build/dev server, cargo test + proptest, serde for maps, wasm-bindgen-futures for async asset loading, pixel-buffer + putImageData rendering, Rust-owns-everything boundary, release profile for wasm size). Updated nfr-requirements.md: Required APIs table (WebAssembly + web-sys access), Code Quality (Rust/clippy/fmt), Testing (cargo test + proptest), Build (trunk serve / trunk build), and Security map-parsing note (serde). Did NOT modify functional/application design artifacts yet (TypeScript interfaces in domain-entities.md, component-methods.md, application-design) — flagged as downstream impact requiring conversion before Code Generation.
+**Context**: CONSTRUCTION - NFR Requirements (tech stack change). Presenting for approval.
+
+---
+
+## NFR Requirements - Approval + Design Artifact Revision Requested
+**Timestamp**: 2026-06-11T00:19:00Z
+**User Input**: "Approved, and yes re-do the design artifacts so we're using Rust not TypeScript, and don't do an exact 1:1 conversion, please use best practices in Rust"
+**AI Response**: NFR Requirements (Rust/wasm tech stack) approved and marked complete. Per user request, revising functional design (domain-entities.md, business-logic-model.md, business-rules.md) and application design (component-methods.md, components.md, services.md, component-dependency.md, application-design.md) from TypeScript to idiomatic Rust. NOT a 1:1 translation — restructuring to data-oriented design: single owning World struct with systems as free functions; strong enums replacing string unions; traits only at the browser boundary (Surface/AudioSink/InputSource/AssetSource) to keep pure core target-agnostic and testable; Result/Option, EntityId newtype, flat tile storage, serde maps, Vec2 math type. Added thiserror to Cargo deps.
+**Context**: CONSTRUCTION - NFR Requirements approved. Revising design artifacts for Rust before Code Generation.
+
+---
+
+## Design Artifact Revision Complete (Rust)
+**Timestamp**: 2026-06-11T00:20:00Z
+**AI Response**: Converted all design artifacts from TypeScript to idiomatic Rust (data-oriented, not 1:1):
+- functional-design/domain-entities.md: Vec2 math, EntityId newtype, strong enums (EnemyState, GameStatus, PickupKind, WallTexture, etc.), Option/Result, flat row-major Map, serde MapFile, MapError (thiserror), single owning World struct.
+- functional-design/business-rules.md: added `constants` module (typed const items), FaceExpression::from_health, static TAUNTS pool.
+- functional-design/business-logic-model.md: added migration note + System Function Signatures section mapping each algorithm to a pure free function; AttackOutcome/Interaction outcome enums; Rust game-flow.
+- application-design/component-methods.md: full rewrite — App<S,A,I> orchestrator, Surface/InputSource/AudioSink/AssetSource boundary traits, pure system fns, Framebuffer rendering, Sound enum.
+- application-design/components.md: 11 modules reframed as systems vs boundaries.
+- application-design/services.md: App::tick pipeline + handle_attack/handle_interactions/check_end_conditions in Rust.
+- application-design/component-dependency.md: borrow/ownership model, World as shared state, generic DI of boundaries.
+- application-design/application-design.md: Rust tech stack table, Cargo+Trunk project layout, frame pipeline, key decisions.
+- Also updated tech-stack-decisions.md Cargo deps (serde, serde_json, thiserror, wasm-bindgen-futures) and requirements.md Technical Decisions table + NFR-03 to remove stale TypeScript/Phaser references.
+- aidlc-state.md Current Stage updated; next stage Code Generation.
+Verified no leftover TypeScript syntax in design docs (remaining "TypeScript" mentions are intentional migration notes; `String` is the Rust type).
+**Context**: CONSTRUCTION - design artifacts revised for Rust. Ready for Code Generation.
+
+---

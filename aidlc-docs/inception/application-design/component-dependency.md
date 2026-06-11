@@ -1,112 +1,90 @@
-# Component Dependencies — "Pots & Parliament"
+# Component Dependencies — "Pots & Parliament" (Rust)
 
-## Dependency Matrix
-
-| Component | Depends On | Depended On By |
-|-----------|-----------|----------------|
-| GameLoop | All components | — (top-level orchestrator) |
-| Renderer | MapSystem, EntitySystem, Player | GameLoop |
-| MapSystem | AssetLoader (for map data) | Renderer, Player, EnemyAI, CombatSystem |
-| InputSystem | — (browser events only) | GameLoop, Player |
-| Player | MapSystem (collision), InputSystem | Renderer, CombatSystem, EntitySystem, HUDRenderer |
-| EntitySystem | MapSystem (spawns) | Renderer, CombatSystem, EnemyAI |
-| EnemyAI | MapSystem (LOS, pathfinding), Player (position) | EntitySystem |
-| CombatSystem | Player (position), EntitySystem (targets) | GameLoop |
-| AudioSystem | AssetLoader (sound buffers) | GameLoop (via service coordination) |
-| HUDRenderer | Player (health), CombatSystem (weapon state) | GameLoop |
-| AssetLoader | — (fetch API only) | MapSystem, AudioSystem, Renderer |
+> **Design note:** In the Rust design, "dependencies" are mostly *data borrows*, not object references. The `App` owns the `World` and the four boundary trait objects. Pure systems are free functions that borrow slices of the `World`; they never store handles to one another. This sidesteps the borrow-checker pain that a direct port of the TypeScript "component holds a reference to MapSystem" pattern would cause.
 
 ---
 
-## Data Flow Diagram
+## What each system reads / writes
 
-```
-+------------------+
-|   AssetLoader    |  ← Loads textures, sounds, maps from /assets/
-+--------+---------+
-         |
-         | provides loaded assets to:
-         v
-+--------+---------+     +----------+     +-----------+
-|    MapSystem     |     |  Audio   |     | Renderer  |
-| (map data/grid)  |     |  System  |     | (textures)|
-+--------+---------+     +----------+     +-----------+
-         |                     ^                 ^
-         | grid data           | play()          | render state
-         v                     |                 |
-+--------+---------+     +-----+------+          |
-|     Player       |     |  GameLoop  |----------+
-| (position,health)|     | (orchestr) |
-+--------+---------+     +-----+------+
-         |                     |
-         | player pos          | coordinates
-         v                     v
-+--------+---------+     +-----+------+
-|   EntitySystem   |     | HUDRenderer|
-| (enemies,pickups)|     | (UI layer) |
-+--------+---------+     +------------+
-         |
-         | enemy data
-         v
-+--------+---------+     +------------+
-|     EnemyAI      |     |   Combat   |
-| (behavior logic) |     |   System   |
-+------------------+     +------------+
-```
+| System (fn) | Borrows from `World` (read) | Mutates | Boundary used |
+|-------------|------------------------------|---------|----------------|
+| `App::tick` | — (owns everything) | whole `World`, framebuffer | `Surface`, `InputSource`, `AudioSink` |
+| `cast_walls` / `render_sprites` | `player`, `map`, `enemies/pickups/decorations`, `TextureSet` | `Framebuffer`, z-buffer | (presented via `Surface`) |
+| `update_player` | `map` | `player` | — |
+| `update_enemies` | `player`, `map` | `enemies` | — |
+| `resolve_attack` | `player` | `enemies`, `weapon` | — |
+| `try_interact` / `collect_pickups` | `player` | `map`, `pickups`, `player.health` | — |
+| `animate_map` | — | `map` (doors/push-walls, tile solidity) | — |
+| `render_hud` | `player`, `score`, `weapon`, `stats` | `Framebuffer` | — |
+| `parse_map` / asset loading | — | constructs `Map` / `TextureSet` | `AssetSource` |
+
+Pure systems depend on **data shapes** (`Player`, `Map`, …) defined in `domain-entities.md`, never on each other.
 
 ---
 
-## Communication Patterns
+## Ownership / data flow
 
-### Pattern: Shared State Object
-All components read from and write to a simple shared state. No event bus or pub/sub — the GameLoop passes state explicitly to each system in order.
+```
+                 #[wasm_bindgen(start)]  (owns the rAF Closure)
+                          │ constructs
+                          v
+                     +---------+      owns       +--------------------+
+                     |   App   |---------------- | World (game data)  |
+                     +----+----+                 |  player, map,      |
+                          | owns (trait objects) |  enemies, pickups, |
+        +-----------------+--------+----------+  |  weapon, score,... |
+        v                 v        v          v  +---------+----------+
+   +---------+      +-----------+ +-------+ +-----------+    | borrowed by
+   | Surface |      |InputSource| |Audio  | |AssetSource|    | pure systems
+   | (canvas)|      | (events)  | |Sink   | | (fetch)   |    v
+   +----+----+      +-----------+ +-------+ +-----------+  movement / ai /
+        ^ present(&Framebuffer)                            combat / raycaster /
+        |                                                  hud / map animation
+   +----+--------------------+
+   | Framebuffer (RGBA Vec)  |  ← written by raycaster + sprites + hud
+   +-------------------------+
+```
 
-```typescript
-interface SharedGameState {
-  player: PlayerState;
-  map: MapSystem;
-  entities: EntitySystem;
-  combat: CombatSystem;
-  score: ScoreState;
-  time: TimeState;
+Boundaries flow *into* `App` at construction (dependency injection by generic type params `App<S, A, I>`), which makes them trivially swappable for test doubles.
+
+---
+
+## Communication patterns
+
+### The `World` is the shared state
+Every system reads/writes the one `World` the `App` owns. No event bus, no `Rc<RefCell<...>>` spaghetti between systems — the orchestrator passes borrows explicitly in a fixed order.
+
+```rust
+pub struct World {
+    pub status: GameStatus,
+    pub player: Player,
+    pub map: Map,
+    pub enemies: Vec<Enemy>,
+    pub pickups: Vec<Pickup>,
+    pub decorations: Vec<Decoration>,
+    pub weapon: Weapon,
+    pub score: Score,
+    pub stats: LevelStats,
+    pub timers: Timers,
+    // next_id: u32 (private)
 }
 ```
 
-### Pattern: Sequential Update
-Components update in a fixed order each frame. This eliminates race conditions and makes debugging straightforward:
+### Sequential, single-borrow update order
+Input → Player → Enemies → Weapon → Map animation → Combat → Interactions → Conditions → Render → HUD. A fixed order means each step sees a consistent snapshot and no two `&mut` borrows of `World` overlap.
 
-1. **Input** (read hardware state)
-2. **Player** (move based on input)
-3. **Entities** (AI decisions based on player position)
-4. **Combat** (resolve attacks)
-5. **Map** (animate doors/pushwalls)
-6. **Interactions** (pickups, door opens)
-7. **Conditions** (win/lose checks)
-8. **Render** (draw everything)
-9. **HUD** (draw overlay)
-
-### Pattern: One-Shot Events
-For things that happen once per frame (player attacked, enemy dispersed, pickup collected), input flags and results are returned from methods rather than using callbacks or events.
-
-```
-attack pressed → CombatSystem.attack() → returns AttackResult
-                                        → GameLoop reads result, plays sound, updates score
-```
+### Outcomes over callbacks
+Pure systems return values (`AttackOutcome`, `HitResult`, `Interaction`, healed-HP) instead of invoking audio/score directly. The orchestrator maps outcomes to side effects through the boundary traits — keeping logic testable without a browser.
 
 ---
 
-## Coupling Assessment
+## Coupling assessment
 
-| Relationship | Coupling Level | Notes |
-|-------------|----------------|-------|
-| GameLoop → All | High (orchestrator) | Expected — this is the coordinator |
-| Renderer → MapSystem | Medium | Needs grid data for raycasting |
-| Renderer → EntitySystem | Medium | Needs entity positions for sprites |
-| Player → MapSystem | Medium | Collision detection requires grid access |
-| EnemyAI → MapSystem | Medium | LOS and pathfinding need grid |
-| EnemyAI → Player | Low | Only reads player position |
-| CombatSystem → EntitySystem | Medium | Hit detection queries entities |
-| AudioSystem → others | None | Receives play() calls, no dependencies |
-| HUDRenderer → others | Low | Only reads state values to display |
+| Relationship | Coupling | Notes |
+|--------------|----------|-------|
+| `App` → `World` + boundaries | High (by design) | The orchestrator is the single owner/coordinator |
+| Pure systems → domain types | Low | Depend on data shapes, not on each other |
+| Pure systems → boundary traits | None | Systems never touch the browser; orchestrator does |
+| Boundary traits → game logic | None | Implemented with `web-sys`; injected as generics |
 
-**Overall**: Coupling is manageable for a prototype. The shared state pattern keeps things simple and explicit.
+The trait-bounded `App<S, A, I>` plus free-function systems give low coupling and high testability: the entire game core compiles and tests on the native host target with mock boundaries.

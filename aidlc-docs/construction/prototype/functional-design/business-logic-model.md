@@ -1,5 +1,7 @@
 # Business Logic Model — "Pots & Parliament" Prototype
 
+> **Design note:** The algorithms below are language-neutral. In the Rust implementation each is a free function in a system module that borrows the data it needs from `World` (data-oriented), rather than a method on a component that holds references to other components. The Rust signatures for each algorithm are collected in the [System Function Signatures](#system-function-signatures-rust) section at the end. Pure math (raycasting, vector ops, collision predicates) lives in functions with no browser dependencies so they can be unit/property tested on the native target.
+
 ## Core Algorithms
 
 ---
@@ -270,27 +272,78 @@ Push-wall slides 2 grid cells backward from the player's interaction direction, 
 ### Win Condition
 ```
 ON each frame during 'playing' state:
-  IF entitySystem.getAliveEnemyCount() == 0:
-    gameState = 'victory'
-    Calculate level stats
+  IF world.alive_enemy_count() == 0:
+    status = Victory
+    Finalize level stats (apply SCORE_LEVEL_COMPLETE bonus)
     Show victory screen with stats
 ```
 
 ### Lose Condition
 ```
-ON player.takeDamage():
-  IF player.health <= 0:
-    gameState = 'gameOver'
-    Start "give up and go home" animation (1.5s)
+ON applying damage to the player (saturating_sub):
+  IF player.health == 0:
+    status = GameOver { elapsed: 0.0 }
+    Drive the "give up and go home" animation (1.5s) via the variant's `elapsed`
     After animation: show restart prompt
 ```
 
 ### Level Restart
 ```
 ON restart:
-  Reset player position and health to spawn values
-  Reload all entities from map data
-  Reset all doors and pushwalls to initial state
-  Reset score and timer
-  gameState = 'intro'
+  Re-parse / re-instantiate the level into a fresh World:
+    - player reset to spawn pose and MAX_HEALTH
+    - enemies, pickups, decorations respawned from map defs
+    - doors and push-walls reset to initial state
+    - score, stats, and timers zeroed
+  status = Intro { remaining: INTRO_DURATION }
 ```
+
+> Restart rebuilds a fresh `World` from the parsed `MapFile` rather than mutating individual systems back to defaults — fewer places to forget to reset.
+
+---
+
+## System Function Signatures (Rust)
+
+Each algorithm above maps to a function in a system module. Functions take the narrowest borrow that does the job, which keeps the borrow checker satisfied and makes the data dependencies explicit.
+
+```rust
+// raycaster.rs — pure: writes wall strips into the framebuffer, fills the z-buffer
+pub fn cast_walls(player: &Player, map: &Map, textures: &TextureSet,
+                  fb: &mut Framebuffer, zbuffer: &mut [f32]);
+
+// sprites.rs — pure: draws entities back-to-front, respecting the z-buffer
+pub fn render_sprites(world: &World, textures: &TextureSet,
+                      fb: &mut Framebuffer, zbuffer: &[f32]);
+
+// movement.rs — pure: input + collision; axis-independent sliding
+pub fn update_player(player: &mut Player, map: &Map, input: &InputState, dt: f32);
+
+// collision.rs — pure predicate, heavily property-tested
+pub fn blocked(map: &Map, pos: Vec2, radius: f32) -> bool;
+
+// ai.rs — borrows the whole world (enemies read player + map, write themselves)
+pub fn update_enemies(world: &mut World, dt: f32);
+pub fn can_see_player(from: Vec2, player: Vec2, map: &Map) -> bool; // pure LOS via DDA
+
+// combat.rs — returns an outcome the orchestrator turns into sound/score effects
+pub fn resolve_attack(world: &mut World) -> AttackOutcome;
+
+pub struct AttackOutcome {
+    pub hit: Option<EntityId>, // closest enemy struck, if any
+    pub dispersed: bool,       // that hit dispersed the enemy
+}
+
+// map.rs — advances door/push-wall animations and flips tile solidity
+pub fn animate_map(map: &mut Map, dt: f32);
+
+// interactions.rs — doors/push-walls/pickups in front of / overlapping the player
+pub fn try_interact(world: &mut World) -> Option<Interaction>;
+pub fn collect_pickups(world: &mut World) -> u32; // returns HP healed
+
+pub enum Interaction {
+    OpenedDoor(DoorId),
+    TriggeredPushWall(PushWallId),
+}
+```
+
+> `AttackOutcome`/`Interaction` enums let the pure logic report *what happened* without reaching into audio or the HUD; the orchestrator (game loop) maps those outcomes to side effects. This keeps combat/interaction logic testable without a browser.

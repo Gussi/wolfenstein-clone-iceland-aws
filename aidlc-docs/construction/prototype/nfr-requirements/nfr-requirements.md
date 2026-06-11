@@ -52,12 +52,14 @@
 ### Required APIs
 | API | Usage | Fallback |
 |-----|-------|----------|
-| Canvas 2D | All rendering | None (required) |
+| WebAssembly (MVP) | Runs the Rust-compiled game module | None (required) |
+| Canvas 2D (ImageData/putImageData) | Pixel-buffer blit of the game world | None (required) |
 | Pointer Lock | Mouse look | Warn user, game less playable without it |
 | Web Audio API | Sound effects + music | Silent mode (game still playable) |
-| requestAnimationFrame | Game loop | None (required) |
-| Fetch API | Asset loading | None (required) |
-| ES2020+ features | Code (via Vite build) | Transpiled by Vite for target browsers |
+| requestAnimationFrame | Game loop (driven from Rust via web-sys) | None (required) |
+| Fetch API | Asset loading (via web-sys / wasm-bindgen-futures) | None (required) |
+
+> All browser APIs are accessed from Rust through `wasm-bindgen` / `web-sys`. WebAssembly MVP is supported by all target browsers (latest 2 versions of Chrome, Firefox, Safari, Edge).
 
 ### Pointer Lock Handling
 - Request pointer lock on canvas click
@@ -105,25 +107,27 @@
 ## Maintainability Requirements
 
 ### Code Quality
-- TypeScript strict mode (`strict: true` in tsconfig)
-- Modular file structure (1 component = 1 file)
-- Exported interfaces for all public APIs
-- JSDoc comments on public methods
-- No `any` types except in asset loading generics
+- Rust 2024 edition, idiomatic safe Rust (`#![forbid(unsafe_code)]` where practical; isolate any required `unsafe` in audited modules)
+- `cargo clippy` clean (treat warnings as errors in CI-equivalent local checks)
+- `cargo fmt` enforced formatting
+- Modular structure (1 component = 1 module/file)
+- Public APIs documented with `///` doc comments
+- Strong typing via structs/enums; avoid stringly-typed state
+- Browser-only code (web-sys calls) isolated behind thin adapters so the core logic stays target-agnostic and testable
 
 ### Testing
-- Property-based tests (Vitest + fast-check) for:
+- Property-based tests (cargo test + proptest) for:
   - Raycaster math utilities (angle normalization, distance calculations)
-  - Map JSON parsing and validation
+  - Map JSON parsing and validation (serde round-trips)
   - Collision detection edge cases
   - Vector math operations
 - Manual testing for visual correctness and game feel
 - No E2E or integration test framework for prototype
 
 ### Build
-- Single `npm run dev` for development (Vite dev server with HMR)
-- Single `npm run build` for production (Vite build, outputs to `dist/`)
-- `npm run test` for test suite
+- Single `trunk serve` for development (wasm dev server with hot reload)
+- Single `trunk build --release` for production (outputs to `dist/`)
+- `cargo test` for the test suite (native host target)
 - No CI/CD pipeline for prototype (local build only)
 
 ---
@@ -135,7 +139,7 @@
 - No authentication
 - No server-side components
 - Assets served statically
-- Only concern: Ensure no XSS via map JSON parsing (validate structure, don't eval)
+- Only concern: Ensure safe map JSON parsing (parse with serde, validate structure; no `eval`/dynamic code, so no injection risk)
 
 ---
 
