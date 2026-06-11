@@ -9,6 +9,7 @@
 import { TEXTURE_SIZE } from "./constants";
 import type { AssetManifest, LoadedTexture, MapJSON } from "./types";
 import { generatePlaceholderTexture } from "./placeholder-textures";
+import { validateMapJSON } from "./map-validation";
 
 type ProgressCallback = (loaded: number, total: number) => void;
 
@@ -135,30 +136,8 @@ export class AssetLoader {
     const resp = await fetch(src);
     if (!resp.ok) throw new Error(`failed to fetch map: ${src}`);
     const json = (await resp.json()) as MapJSON;
-    this.validateMap(json);
+    validateMapJSON(json);
     return json;
-  }
-
-  /** Basic structural validation — throws with a clear message on bad data (US-11). */
-  private validateMap(map: MapJSON): void {
-    if (typeof map.width !== "number" || typeof map.height !== "number") {
-      throw new Error("Invalid map: width/height must be numbers");
-    }
-    if (!Array.isArray(map.grid) || map.grid.length !== map.height) {
-      throw new Error(`Invalid map: grid must have ${map.height} rows`);
-    }
-    for (let y = 0; y < map.grid.length; y++) {
-      if (!Array.isArray(map.grid[y]) || map.grid[y].length !== map.width) {
-        throw new Error(`Invalid map: row ${y} must have ${map.width} columns`);
-      }
-    }
-    if (
-      !map.playerSpawn ||
-      typeof map.playerSpawn.x !== "number" ||
-      typeof map.playerSpawn.y !== "number"
-    ) {
-      throw new Error("Invalid map: playerSpawn must define numeric x and y");
-    }
   }
 
   getTexture(id: string): LoadedTexture {

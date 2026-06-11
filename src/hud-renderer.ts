@@ -8,7 +8,7 @@
  */
 import { TEXTURE_SIZE } from "./constants";
 import { AssetLoader } from "./asset-loader";
-import type { FaceExpression, HUDState, LevelStats } from "./types";
+import type { HUDState, LevelStats } from "./types";
 
 interface ActiveText {
   text: string;
