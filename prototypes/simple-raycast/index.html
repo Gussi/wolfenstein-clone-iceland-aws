@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raycaster</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace;
+    color: #ccc;
+    overflow: hidden;
+  }
+  #wrap { text-align: center; }
+  canvas {
+    /* internal buffer is small; scale up with chunky pixels for the authentic look */
+    width: 960px;
+    height: 600px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #000;
+    cursor: crosshair;
+    display: block;
+  }
+  #hint { margin-top: 8px; font-size: 12px; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="screen" width="320" height="200"></canvas>
+  <div id="hint">WASD move &nbsp;|&nbsp; &larr; &rarr; turn &nbsp;|&nbsp; click canvas for mouse-look (Esc to release)</div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const W = 320, H = 200;          // internal render resolution
+const TEX = 64;                  // texture size (MUST be power of two; 64 is the Wolf3D standard)
+const FOV_PLANE = 0.66;          // camera plane length -> ~66 deg field of view
+
+const canvas = document.getElementById('screen');
+const ctx = canvas.getContext('2d');
+const imageData = ctx.createImageData(W, H);
+const buf = new Uint32Array(imageData.data.buffer); // write 32-bit pixels directly
+
+// Little-endian packing: 0xAABBGGRR
+function rgba(r, g, b, a = 255) {
+  return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;
+}
+
+// ============================================================
+// MAP   (0 = empty, 1..N = wall using texture[N-1])
+// ============================================================
+const map = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1],
+  [1,0,2,2,0,0,3,3,3,0,2,0,0,0,0,1],
+  [1,0,2,0,0,0,0,0,0,0,2,0,4,4,0,1],
+  [1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,3,3,0,0,2,2,2,2,0,0,0,1],
+  [1,0,0,0,3,0,0,0,0,0,0,2,0,0,0,1],
+  [1,0,0,0,3,0,0,0,0,0,0,2,0,0,0,1],
+  [1,0,0,0,3,3,0,0,0,0,0,0,0,4,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,4,0,1],
+  [1,0,4,4,4,0,0,2,2,2,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,2,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,2,0,0,0,3,3,3,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+const MAP_W = map[0].length, MAP_H = map.length;
+
+// ============================================================
+// TEXTURES
+// textures[i] is a Uint32Array of length TEX*TEX (packed ABGR pixels).
+//
+//  >>> TO USE YOUR OWN PNGs: see loadTexture() below. Replace any
+//  >>> entry in this array with `await loadTexture('your-wall.png')`.
+// ============================================================
+function makeTexture(painter) {
+  const t = new Uint32Array(TEX * TEX);
+  painter(t);
+  return t;
+}
+
+// --- placeholder procedural pixel-art textures (swap these out) ---
+const textures = [
+  // 1: red brick
+  makeTexture(t => {
+    for (let y = 0; y < TEX; y++) for (let x = 0; x < TEX; x++) {
+      const brickH = 16, brickW = 32;
+      const row = Math.floor(y / brickH);
+      const offset = (row % 2) * (brickW / 2);
+      const mortar = (y % brickH < 2) || ((x + offset) % brickW < 2);
+      t[y * TEX + x] = mortar ? rgba(40, 40, 40) : rgba(150 + ((x * y) % 30), 50, 45);
+    }
+  }),
+  // 2: blue stone
+  makeTexture(t => {
+    for (let y = 0; y < TEX; y++) for (let x = 0; x < TEX; x++) {
+      const n = ((x * 13 + y * 7) % 24);
+      t[y * TEX + x] = rgba(40, 60, 90 + n, 255);
+    }
+  }),
+  // 3: green panel with bolts
+  makeTexture(t => {
+    for (let y = 0; y < TEX; y++) for (let x = 0; x < TEX; x++) {
+      const edge = (x < 3 || x > TEX - 4 || y < 3 || y > TEX - 4);
+      const bolt = ((x - 8) ** 2 + (y - 8) ** 2 < 9) || ((x - 55) ** 2 + (y - 55) ** 2 < 9);
+      t[y * TEX + x] = bolt ? rgba(200, 200, 120) : (edge ? rgba(20, 60, 30) : rgba(45, 110, 55));
+    }
+  }),
+  // 4: grey concrete
+  makeTexture(t => {
+    for (let y = 0; y < TEX; y++) for (let x = 0; x < TEX; x++) {
+      const n = ((x * 17 ^ y * 31) % 20);
+      t[y * TEX + x] = rgba(110 + n, 110 + n, 110 + n, 255);
+    }
+  }),
+];
+
+// ============================================================
+// SPRITES   (billboarded pixel art, alpha = 0 is transparent)
+// ============================================================
+const spriteTex = makeTexture(t => {
+  for (let i = 0; i < t.length; i++) t[i] = rgba(0, 0, 0, 0); // transparent
+  // a little barrel
+  for (let y = 8; y < 60; y++) for (let x = 20; x < 44; x++) {
+    let c = rgba(120, 70, 30);
+    if (y % 12 < 2) c = rgba(60, 35, 15);     // hoops
+    if (x < 24 || x > 39) c = rgba(80, 45, 20); // shading
+    t[y * TEX + x] = c;
+  }
+});
+
+const sprites = [
+  { x: 4.5,  y: 4.5,  tex: spriteTex },
+  { x: 11.5, y: 8.5,  tex: spriteTex },
+  { x: 8.5,  y: 12.5, tex: spriteTex },
+];
+
+// ============================================================
+// LOAD YOUR OWN PNGs   (call once, before the game loop)
+// ------------------------------------------------------------
+//   const wall = await loadTexture('my-wall.png');   // 64x64 PNG
+//   textures[0] = wall;
+//   sprites.push({ x: 6.5, y: 6.5, tex: await loadTexture('enemy.png') });
+//
+// Works with PNG (recommended) or JPG. PNG alpha = transparency.
+// Image is resized to TEXxTEX automatically.
+// ============================================================
+function loadTexture(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const off = document.createElement('canvas');
+      off.width = TEX; off.height = TEX;
+      const octx = off.getContext('2d');
+      octx.imageSmoothingEnabled = false; // keep pixels crisp
+      octx.clearRect(0, 0, TEX, TEX);
+      octx.drawImage(img, 0, 0, TEX, TEX);
+      const data = octx.getImageData(0, 0, TEX, TEX).data;
+      const out = new Uint32Array(TEX * TEX);
+      for (let i = 0; i < out.length; i++) {
+        out[i] = rgba(data[i*4], data[i*4+1], data[i*4+2], data[i*4+3]);
+      }
+      resolve(out);
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// ============================================================
+// PLAYER / CAMERA
+// ============================================================
+let posX = 2.5, posY = 5.5;   // position on the grid (open cell)
+let dirX = 1,   dirY = 0;     // facing direction
+let planeX = 0, planeY = FOV_PLANE; // camera plane (perpendicular to dir)
+
+const zBuffer = new Float32Array(W); // wall depth per column, for sprite occlusion
+
+// ============================================================
+// INPUT
+// ============================================================
+const keys = {};
+addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
+
+canvas.addEventListener('click', () => canvas.requestPointerLock && canvas.requestPointerLock());
+addEventListener('mousemove', e => {
+  if (document.pointerLockElement === canvas) rotate(-e.movementX * 0.0025);
+});
+
+function rotate(rot) {
+  const cos = Math.cos(rot), sin = Math.sin(rot);
+  const odx = dirX; dirX = dirX*cos - dirY*sin; dirY = odx*sin + dirY*cos;
+  const opx = planeX; planeX = planeX*cos - planeY*sin; planeY = opx*sin + planeY*cos;
+}
+
+function tryMove(nx, ny) {
+  if (map[Math.floor(posY)][Math.floor(nx)] === 0) posX = nx;
+  if (map[Math.floor(ny)][Math.floor(posX)] === 0) posY = ny;
+}
+
+function input(dt) {
+  const moveSpeed = 3.0 * dt;
+  const turnSpeed = 2.5 * dt;
+  if (keys['w'])           tryMove(posX + dirX*moveSpeed, posY + dirY*moveSpeed);
+  if (keys['s'])           tryMove(posX - dirX*moveSpeed, posY - dirY*moveSpeed);
+  if (keys['d'])           tryMove(posX + planeX*moveSpeed, posY + planeY*moveSpeed);
+  if (keys['a'])           tryMove(posX - planeX*moveSpeed, posY - planeY*moveSpeed);
+  if (keys['arrowright'])  rotate(-turnSpeed);
+  if (keys['arrowleft'])   rotate(turnSpeed);
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+const CEILING = rgba(56, 56, 56);
+const FLOOR   = rgba(96, 96, 96);
+
+function render() {
+  // ceiling / floor
+  const half = (W * (H >> 1));
+  for (let i = 0; i < half; i++) buf[i] = CEILING;
+  for (let i = half; i < W * H; i++) buf[i] = FLOOR;
+
+  // --- walls ---
+  for (let x = 0; x < W; x++) {
+    const cameraX = 2 * x / W - 1;
+    const rayDirX = dirX + planeX * cameraX;
+    const rayDirY = dirY + planeY * cameraX;
+
+    let mapX = Math.floor(posX), mapY = Math.floor(posY);
+    const deltaDistX = Math.abs(1 / rayDirX);
+    const deltaDistY = Math.abs(1 / rayDirY);
+
+    let stepX, stepY, sideDistX, sideDistY;
+    if (rayDirX < 0) { stepX = -1; sideDistX = (posX - mapX) * deltaDistX; }
+    else             { stepX =  1; sideDistX = (mapX + 1 - posX) * deltaDistX; }
+    if (rayDirY < 0) { stepY = -1; sideDistY = (posY - mapY) * deltaDistY; }
+    else             { stepY =  1; sideDistY = (mapY + 1 - posY) * deltaDistY; }
+
+    let hit = 0, side = 0;
+    while (hit === 0) {
+      if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
+      else                       { sideDistY += deltaDistY; mapY += stepY; side = 1; }
+      if (map[mapY][mapX] > 0) hit = map[mapY][mapX];
+    }
+
+    const perpDist = (side === 0)
+      ? (sideDistX - deltaDistX)
+      : (sideDistY - deltaDistY);
+    zBuffer[x] = perpDist;
+
+    const lineHeight = Math.floor(H / perpDist);
+    let drawStart = Math.floor(-lineHeight / 2 + H / 2);
+    let drawEnd   = Math.floor( lineHeight / 2 + H / 2);
+    if (drawStart < 0) drawStart = 0;
+    if (drawEnd >= H) drawEnd = H - 1;
+
+    // where exactly the wall was hit (for the texture column)
+    let wallX = (side === 0) ? posY + perpDist * rayDirY : posX + perpDist * rayDirX;
+    wallX -= Math.floor(wallX);
+    let texX = Math.floor(wallX * TEX);
+    if (side === 0 && rayDirX > 0) texX = TEX - texX - 1;
+    if (side === 1 && rayDirY < 0) texX = TEX - texX - 1;
+
+    const tex = textures[hit - 1];
+    const step = TEX / lineHeight;
+    let texPos = (drawStart - H / 2 + lineHeight / 2) * step;
+
+    for (let y = drawStart; y <= drawEnd; y++) {
+      const texY = Math.floor(texPos) & (TEX - 1);
+      texPos += step;
+      let color = tex[texY * TEX + texX];
+      if (side === 1) { // darken Y-facing walls for fake shading
+        const r = color & 0xff, g = (color >> 8) & 0xff, b = (color >> 16) & 0xff;
+        color = rgba(r >> 1, g >> 1, b >> 1);
+      }
+      buf[y * W + x] = color;
+    }
+  }
+
+  // --- sprites ---
+  // sort far -> near
+  sprites.sort((a, b) =>
+    ((b.x-posX)**2 + (b.y-posY)**2) - ((a.x-posX)**2 + (a.y-posY)**2));
+
+  const invDet = 1 / (planeX * dirY - dirX * planeY);
+  for (const sp of sprites) {
+    const sx = sp.x - posX, sy = sp.y - posY;
+    const transformX = invDet * (dirY * sx - dirX * sy);
+    const transformY = invDet * (-planeY * sx + planeX * sy); // depth
+    if (transformY <= 0) continue; // behind camera
+
+    const screenX = Math.floor((W / 2) * (1 + transformX / transformY));
+    const sHeight = Math.abs(Math.floor(H / transformY));
+    let startY = Math.floor(-sHeight / 2 + H / 2); if (startY < 0) startY = 0;
+    let endY   = Math.floor( sHeight / 2 + H / 2); if (endY >= H) endY = H - 1;
+    const sWidth = sHeight;
+    let startX = Math.floor(-sWidth / 2 + screenX); if (startX < 0) startX = 0;
+    let endX   = Math.floor( sWidth / 2 + screenX); if (endX >= W) endX = W - 1;
+
+    for (let x = startX; x <= endX; x++) {
+      if (transformY >= zBuffer[x]) continue; // occluded by wall
+      const texX = Math.floor((x - (-sWidth / 2 + screenX)) * TEX / sWidth);
+      if (texX < 0 || texX >= TEX) continue;
+      for (let y = startY; y <= endY; y++) {
+        const d = (y - (-sHeight / 2 + H / 2)) * TEX / sHeight;
+        const texY = Math.floor(d);
+        if (texY < 0 || texY >= TEX) continue;
+        const color = sp.tex[texY * TEX + texX];
+        if ((color >>> 24) === 0) continue; // transparent pixel
+        buf[y * W + x] = color;
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  input(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+// To load your art before starting, make this async and await loadTexture(...).
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

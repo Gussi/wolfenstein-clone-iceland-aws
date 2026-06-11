@@ -35,6 +35,7 @@
 - Sprite rendering for enemies, pickups, and decorations
 - Push-wall secret mechanic (walls that slide open when interacted with)
 - Consistent frame rate targeting 60fps in modern browsers
+- **Visual accuracy to Icelandic parliament architecture** (see FR-11)
 
 ### FR-02: Player Movement and Controls
 - Classic FPS movement: forward, backward, strafe left, strafe right
@@ -91,6 +92,25 @@
 - JSON or YAML format
 - Defines: grid dimensions, wall tiles, floor tiles, entity placements, door positions, push-wall positions, player spawn, enemy spawns, pickup locations
 - Loaded at runtime (not compiled into code)
+
+### FR-11: Visual Accuracy to Icelandic Parliament Buildings
+- Environment textures and level design must evoke the real Icelandic parliament (Alþingishúsið) and government buildings
+- **Exterior/structural walls**: Dark hewn Icelandic dolerite (basalt) stone — the near-black rough-cut volcanic stone unique to Iceland's historic buildings
+- **Interior walls**: Smooth white/cream plastered surfaces (Alþingishúsið's interior finish), with wainscoting or chair-rail details
+- **Floors**: Dark polished stone or dark wood parquet (19th-century Nordic institutional style)
+- **Doors**: Dark-stained wood with neoclassical panel detailing, brass/bronze hardware
+- **Color palette**: Muted institutional — dark basalt gray, cream/off-white plaster, dark wood brown, brass accents, deep blue (Alþingi chamber carpet)
+- **Scale**: Small-country intimate rooms, not grandiose halls — reflecting Iceland's compact governance buildings
+- **Architectural character**: Nordic neoclassical restraint — dignified but not opulent
+- **Committee wing**: Repeating identical doorways along cream corridors (the satirical "endless committee rooms" grounded in real architecture)
+- **Period details**: Wall sconces, portrait frames, coat of arms motifs, the 1881 date/stars pattern
+- **Windows**: Tall narrow windows showing volcanic landscape (erupting volcano gag visible through every window)
+- **Transition zones**: Older stone sections (1881 original) blending into slightly more modern annex areas (referencing the Kringlan rotunda of 1908 and Skálinn of 2002)
+
+**Architectural References:**
+1. Alþingishúsið (1881) — Ferdinand Meldahl design, dark dolerite, neoclassical
+2. Stjórnarráðshúsið (Government House) — 18th-century formal interiors
+3. Austurvöllur government district — mix of historic stone and 20th-century functional buildings
 
 ---
 
