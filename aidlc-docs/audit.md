@@ -233,3 +233,11 @@ Verified no leftover TypeScript syntax in design docs (remaining "TypeScript" me
 **Context**: CONSTRUCTION - design artifacts revised for Rust. Ready for Code Generation.
 
 ---
+
+## Code Generation - Part 1 (Planning) - Plan Created & Approval Prompt
+**Timestamp**: 2026-06-11T00:21:00Z
+**User Input**: "Go ahead with code generation."
+**AI Response**: Entered CONSTRUCTION - Code Generation, Part 1 (Planning). Created prototype-code-generation-plan.md — 18 numbered steps adapted to the client-side game architecture (no API/Repository/DB/Frontend layers). Order: project scaffold → core (math/constants/domain/map) → pure systems (movement/AI/combat/interactions) → rendering (raycaster/sprites/HUD) → orchestration (App + boundary traits + game flow) → browser platform impls (web-sys) → wasm entry → assets (manifest + sample level1.json + placeholders) → tests (proptest: math/map/collision) → docs → deployment. Full story coverage matrix for US-01..US-25 included. Flagged that binary art/audio assets get programmatic placeholders + a required-assets README (final art is a follow-up task). Presenting plan for approval before any code is generated.
+**Context**: CONSTRUCTION - Code Generation Part 1. Awaiting plan approval.
+
+---
