@@ -170,3 +170,26 @@
 **Context**: INCEPTION - Application Design complete, awaiting approval.
 
 ---
+
+## Application Design - Approval
+**Timestamp**: 2026-06-11T00:13:00Z
+**User Input**: "Approved"
+**AI Response**: Application design approved. Proceeding to CONSTRUCTION phase — Functional Design.
+**Context**: INCEPTION phase complete. Entering CONSTRUCTION - Functional Design.
+
+---
+
+## Functional Design - Answers Received & Artifacts Generated
+**Timestamp**: 2026-06-11T00:14:00Z
+**User Input**: "Done"
+**Answers**:
+- Q1: B (66° FOV)
+- Q2: B (640x400 internal resolution)
+- Q3: B (~3 cells/sec movement)
+- Q4: B (3 hits to disperse)
+- Q5: B (32x32 grid)
+- Q6: C (30+ enemies)
+**AI Response**: No ambiguities. Generated 3 functional design artifacts: business-logic-model.md (DDA raycasting, sprite rendering, movement/collision, AI state machine, combat hit detection, door/pushwall animation, game flow), business-rules.md (all balance constants, scoring rules, difficulty analysis, HUD rules, enemy taunts in Icelandic), domain-entities.md (full TypeScript interfaces for all entities, map format, texture atlas definitions).
+**Context**: CONSTRUCTION - Functional Design complete. Presenting for approval.
+
+---
