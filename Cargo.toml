@@ -1,0 +1,59 @@
+[package]
+name = "pots-and-parliament"
+version = "0.1.0"
+edition = "2024"
+description = "Pots & Parliament — an Icelandic-flavoured Wolfenstein 3D-style raycaster prototype (Rust/wasm)."
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+
+# Browser bindings are only needed when targeting wasm. Keeping them target-gated
+# means `cargo test` on the host compiles only the pure, target-agnostic core.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3"
+features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "ImageData",
+    "CssStyleDeclaration",
+    "AudioContext",
+    "AudioBuffer",
+    "AudioBufferSourceNode",
+    "AudioContextState",
+    "GainNode",
+    "AudioDestinationNode",
+    "AudioParam",
+    "console",
+    "Event",
+    "EventTarget",
+    "KeyboardEvent",
+    "MouseEvent",
+    "Performance",
+    "Request",
+    "RequestInit",
+    "Response",
+]
+
+[dev-dependencies]
+proptest = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"

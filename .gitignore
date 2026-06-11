@@ -1,0 +1,12 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock
+
+# Trunk / wasm build output
+/dist
+
+# Editor
+.idea/
+.vscode/
+*.swp

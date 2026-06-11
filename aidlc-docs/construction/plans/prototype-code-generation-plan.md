@@ -25,99 +25,99 @@
 ## Generation Steps
 
 ### Step 1: Project Structure Setup (greenfield)
-- [ ] `Cargo.toml` (deps: wasm-bindgen, wasm-bindgen-futures, js-sys, web-sys w/ features, serde, serde_json, thiserror; dev: proptest; release profile)
-- [ ] `rust-toolchain.toml` (stable + `wasm32-unknown-unknown`)
-- [ ] `Trunk.toml` and `index.html` (Trunk entry, `<canvas id="game">`, pixelated CSS)
-- [ ] `src/lib.rs` crate root with module declarations and `#[wasm_bindgen(start)]` stub
-- [ ] `.gitignore` (target/, dist/)
+- [x] `Cargo.toml` (deps: wasm-bindgen, wasm-bindgen-futures, js-sys, web-sys w/ features, serde, serde_json, thiserror; dev: proptest; release profile)
+- [x] `rust-toolchain.toml` (stable + `wasm32-unknown-unknown`)
+- [x] `Trunk.toml` and `index.html` (Trunk entry, `<canvas id="game">`, pixelated CSS)
+- [x] `src/lib.rs` crate root with module declarations and `#[wasm_bindgen(start)]` stub
+- [x] `.gitignore` (target/, dist/)
 - **Stories**: foundation for all
 
 ### Step 2: Core — Math & Constants
-- [ ] `src/math.rs` — `Vec2` + ops (dot, length, normalized, from_angle), `#[cfg(test)]` unit tests
-- [ ] `src/constants.rs` — all balance constants from business-rules.md
+- [x] `src/math.rs` — `Vec2` + ops (dot, length, normalized, from_angle), `#[cfg(test)]` unit tests
+- [x] `src/constants.rs` — all balance constants from business-rules.md
 - **Stories**: US-01, US-09 (math underpins movement + raycasting)
 
 ### Step 3: Core — Domain Types
-- [ ] `src/domain/mod.rs`
-- [ ] `player.rs`, `enemy.rs`, `pickup.rs`, `weapon.rs` (structs + enums + small inherent methods)
-- [ ] `src/world.rs` — `World` struct, `EntityId` allocation, `spawn_from_map`, query helpers, `Animation`, `Taunt`, `FaceExpression`
+- [x] `src/domain/mod.rs`
+- [x] `player.rs`, `enemy.rs`, `pickup.rs`, `weapon.rs` (structs + enums + small inherent methods)
+- [x] `src/world.rs` — `World` struct, `EntityId` allocation, `spawn_from_map`, query helpers, `Animation`, `Taunt`, `FaceExpression`
 - **Stories**: US-13, US-15, US-16, US-24 (state these features read)
 
 ### Step 4: Map — serde format, parsing, validation, runtime model
-- [ ] `src/domain/map.rs` — `MapFile` (serde), `Map`, `Tile`, `TileKind`, `Door`, `PushWall`, `WallTexture` + `from_grid_id`, `MapError`
-- [ ] `parse_map(json) -> Result<Map, MapError>` with validation (dims, bounds)
-- [ ] `#[cfg(test)]` unit tests for parse happy-path + invalid cases
+- [x] `src/domain/map.rs` — `MapFile` (serde), `Map`, `Tile`, `TileKind`, `Door`, `PushWall`, `WallTexture` + `from_grid_id`, `MapError`
+- [x] `parse_map(json) -> Result<Map, MapError>` with validation (dims, bounds)
+- [x] `#[cfg(test)]` unit tests for parse happy-path + invalid cases
 - **Stories**: US-11
 
 ### Step 5: System — Movement & Collision
-- [ ] `src/systems/mod.rs`
-- [ ] `src/systems/movement.rs` — `update_player`, `blocked` predicate, axis-independent sliding; inline unit tests
+- [x] `src/systems/mod.rs`
+- [x] `src/systems/movement.rs` — `update_player`, `blocked` predicate, axis-independent sliding; inline unit tests
 - **Stories**: US-01, US-02, US-04
 
 ### Step 6: System — Enemy AI
-- [ ] `src/systems/ai.rs` — `update_enemies`, `can_see_player` (DDA LOS), `apply_hit -> HitResult`, state machine (idle→alert→pursue→attack, stunned, dispersing), taunt trigger
+- [x] `src/systems/ai.rs` — `update_enemies`, `can_see_player` (DDA LOS), `apply_hit -> HitResult`, state machine (idle→alert→pursue→attack, stunned, dispersing), taunt trigger
 - **Stories**: US-06, US-07, US-08, US-24
 
 ### Step 7: System — Combat
-- [ ] `src/systems/combat.rs` — `resolve_attack -> AttackOutcome`, `update_weapon`, range+arc cone test, closest-target selection
+- [x] `src/systems/combat.rs` — `resolve_attack -> AttackOutcome`, `update_weapon`, range+arc cone test, closest-target selection
 - **Stories**: US-05, US-06
 
 ### Step 8: System — Interactions (doors, push-walls, pickups)
-- [ ] `src/systems/interactions.rs` — `try_interact -> Option<Interaction>`, `collect_pickups -> u32`
-- [ ] `src/domain/map.rs` animation: `animate_map`, `open_door`, `activate_push_wall` (tile solidity flips)
+- [x] `src/systems/interactions.rs` — `try_interact -> Option<Interaction>`, `collect_pickups -> u32`
+- [x] `src/domain/map.rs` animation: `animate_map`, `open_door`, `activate_push_wall` (tile solidity flips)
 - **Stories**: US-03, US-12, US-23
 
 ### Step 9: Rendering — Raycaster (walls)
-- [ ] `src/systems/raycaster.rs` — `Framebuffer`, `cast_walls` (DDA, perpendicular distance, textured strips, side shading, z-buffer fill); floor/ceiling fill
+- [x] `src/systems/raycaster.rs` — `Framebuffer`, `cast_walls` (DDA, perpendicular distance, textured strips, side shading, z-buffer fill); floor/ceiling fill
 - **Stories**: US-09, US-25 (texture selection per wall)
 
 ### Step 10: Rendering — Sprites
-- [ ] `src/systems/sprites.rs` — `render_sprites` (camera transform, depth sort, z-buffer test, billboard, color-key transparency)
+- [x] `src/systems/sprites.rs` — `render_sprites` (camera transform, depth sort, z-buffer test, billboard, color-key transparency)
 - **Stories**: US-10
 
 ### Step 11: Rendering — HUD
-- [ ] `src/systems/hud.rs` — `HudView`, `Overlay`, `render_hud` (health, connections, weapon frame, face portrait, overlays/taunts/stats)
+- [x] `src/systems/hud.rs` — `HudView`, `Overlay`, `render_hud` (health, connections, weapon frame, face portrait, overlays/taunts/stats)
 - **Stories**: US-13, US-14, US-15, US-16, US-22, US-24
 
 ### Step 12: Orchestration — App, boundary traits, game flow
-- [ ] `src/boundary.rs` — `Surface`, `InputSource`, `AudioSink` (+ `Sound` enum), `AssetSource` (+ `AssetError`, `AssetManifest`, `TextureSet`) trait definitions
-- [ ] `src/app.rs` — `App<S,A,I>`, `tick` pipeline, `handle_attack`, `handle_interactions`, `check_end_conditions`, `advance_timed_state`, `GameStatus` transitions, level (re)build/restart
+- [x] `src/boundary.rs` — `Surface`, `InputSource`, `AudioSink` (+ `Sound` enum), `AssetSource` (+ `AssetError`, `AssetManifest`, `TextureSet`) trait definitions
+- [x] `src/app.rs` — `App<S,A,I>`, `tick` pipeline, `handle_attack`, `handle_interactions`, `check_end_conditions`, `advance_timed_state`, `GameStatus` transitions, level (re)build/restart
 - **Stories**: US-20, US-21, US-22 (game flow); orchestrates all systems
 
 ### Step 13: Platform — browser boundary impls (web-sys)
-- [ ] `src/platform/mod.rs`
-- [ ] `surface.rs` — `ImageData` + `putImageData` + scale to canvas; resize
-- [ ] `input.rs` — keyboard/mouse listeners + Pointer Lock, shared `InputState`
-- [ ] `audio.rs` — `AudioContext`, decode + play SFX/music, volume/mute
-- [ ] `assets.rs` — async `fetch` bytes/text, decode textures → `TextureSet`, progress
+- [x] `src/platform/mod.rs`
+- [x] `surface.rs` — `ImageData` + `putImageData` + scale to canvas; resize
+- [x] `input.rs` — keyboard/mouse listeners + Pointer Lock, shared `InputState`
+- [x] `audio.rs` — `AudioContext`, decode + play SFX/music, volume/mute
+- [x] `assets.rs` — async `fetch` bytes/text, decode textures → `TextureSet`, progress
 - **Stories**: US-01..US-03 (input), US-17..US-19 (audio), US-09/US-10 (presentation), US-11 (asset/map load)
 
 ### Step 14: wasm Entry Point
-- [ ] `src/lib.rs` — `#[wasm_bindgen(start)]`: get canvas, construct platform impls, load assets (async), build `World` from level1, create `App`, retain rAF `Closure`
+- [x] `src/lib.rs` — `#[wasm_bindgen(start)]`: get canvas, construct platform impls, load assets (async), build `World` from level1, create `App`, retain rAF `Closure`
 - **Stories**: US-20 (boot → intro)
 
 ### Step 15: Assets — manifest, sample level, placeholders
-- [ ] `assets/maps/level1.json` — 32×32 level: lobby + committee corridor, 1 push-wall secret w/ reward, ~30 enemies, pickups, doors, decorations, spawn (US-09/US-11/US-12/US-25)
-- [ ] Asset manifest wiring in code (texture keys, sound keys → urls)
-- [ ] Placeholder generation strategy for missing PNG/audio (programmatic solid-color/checker textures + silent audio fallback) so the build runs without final art
-- [ ] `assets/README.md` listing required final art/audio (walls per `WallTexture`, sprites, HUD, sfx, music) with the existing `music/Loftsöngur - 8bit.mp3`
+- [x] `assets/maps/level1.json` — 32×32 level: lobby + committee corridor, 1 push-wall secret w/ reward, ~30 enemies, pickups, doors, decorations, spawn (US-09/US-11/US-12/US-25)
+- [x] Asset manifest wiring in code (texture keys, sound keys → urls)
+- [x] Placeholder generation strategy for missing PNG/audio (programmatic solid-color/checker textures + silent audio fallback) so the build runs without final art
+- [x] `assets/README.md` listing required final art/audio (walls per `WallTexture`, sprites, HUD, sfx, music) with the existing `music/Loftsöngur - 8bit.mp3`
 - **Stories**: US-09, US-10, US-11, US-12, US-25; audio US-17..US-19
 
 ### Step 16: Tests — unit + property-based
-- [ ] `tests/math.rs` — proptest: angle normalization, normalized() invariants, vector ops
-- [ ] `tests/map_parsing.rs` — proptest: valid map round-trips/parse; invalid maps rejected with `MapError`
-- [ ] `tests/collision.rs` — proptest: `blocked`/sliding never lets player enter solid tiles; bounds
-- [ ] Confirm inline `#[cfg(test)]` modules from Steps 2/4/5 compile under host target
+- [x] `tests/math.rs` — proptest: angle normalization, normalized() invariants, vector ops
+- [x] `tests/map_parsing.rs` — proptest: valid map round-trips/parse; invalid maps rejected with `MapError`
+- [x] `tests/collision.rs` — proptest: `blocked`/sliding never lets player enter solid tiles; bounds
+- [x] Confirm inline `#[cfg(test)]` modules from Steps 2/4/5 compile under host target
 - **Stories**: cross-cutting (NFR-03 PBT scope)
 
 ### Step 17: Documentation
-- [ ] `README.md` (workspace root) — overview, prerequisites (rustup target, trunk), `trunk serve` / `cargo test` / `trunk build --release`, controls
-- [ ] `aidlc-docs/construction/prototype/code/code-summary.md` — module map, story coverage, what's stubbed (assets)
+- [x] `README.md` (workspace root) — overview, prerequisites (rustup target, trunk), `trunk serve` / `cargo test` / `trunk build --release`, controls
+- [x] `aidlc-docs/construction/prototype/code/code-summary.md` — module map, story coverage, what's stubbed (assets)
 - **Stories**: developer-facing
 
 ### Step 18: Deployment Artifacts
-- [ ] Confirm `Trunk.toml` release output + `.wasm` MIME note in README
-- [ ] `aidlc-docs/construction/prototype/code/deployment.md` — static hosting steps, MIME requirement, bundle-size note
+- [x] Confirm `Trunk.toml` release output + `.wasm` MIME note in README
+- [x] `aidlc-docs/construction/prototype/code/deployment.md` — static hosting steps, MIME requirement, bundle-size note
 - **Stories**: deployment readiness
 
 ---

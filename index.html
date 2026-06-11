@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pots &amp; Parliament</title>
+    <link data-trunk rel="rust" />
+    <link data-trunk rel="copy-dir" href="assets" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+        font-family: system-ui, sans-serif;
+      }
+      #game {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        display: block;
+        margin: 0 auto;
+        height: 100vh;
+        cursor: crosshair;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game" width="640" height="400"></canvas>
+  </body>
+</html>

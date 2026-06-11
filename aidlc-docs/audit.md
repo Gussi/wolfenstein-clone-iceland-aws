@@ -241,3 +241,18 @@ Verified no leftover TypeScript syntax in design docs (remaining "TypeScript" me
 **Context**: CONSTRUCTION - Code Generation Part 1. Awaiting plan approval.
 
 ---
+
+## Code Generation - Part 1 Approved, Part 2 (Generation) Started
+**Timestamp**: 2026-06-11T00:22:00Z
+**User Input**: "Approved."
+**AI Response**: Code generation plan approved. Marked Part 1 complete. Beginning Part 2 (Generation), executing the 18 steps in order, checking off plan checkboxes as each completes. Code at workspace root (src/, tests/, assets/); markdown summaries in aidlc-docs/construction/prototype/code/. Pure core gated for native test target; platform (web-sys) gated behind cfg(target_arch="wasm32").
+**Context**: CONSTRUCTION - Code Generation Part 2. Generating code.
+
+---
+
+## Code Generation - Part 2 (Generation) Complete
+**Timestamp**: 2026-06-11T00:30:00Z
+**AI Response**: Executed all 18 plan steps; generated ~28 source files + level1.json + 3 proptest files + docs at workspace root, with markdown summaries in aidlc-docs/construction/prototype/code/. Idiomatic Rust data-oriented design: owning World, pure system free-functions, browser side-effects behind traits (Surface/InputSource/AudioSink/AssetSource), platform impls + entry gated to wasm32. Verified in WSL Debian (cargo 1.96.0): `cargo test` → 38 passed (28 lib + 5 math + 4 map + 1 collision proptests); `cargo clippy` → clean (0 warnings after fixes); `cargo fmt` → applied; `cargo build --target wasm32-unknown-unknown` → Finished (platform/web-sys compile). Fixes during verification: corrected an over-strict normalize_angle boundary test; added web-sys "console" feature; replaced deprecated AudioBufferSourceNode::stop; resolved 6 clippy lints (let-chains, is_none_or, match guards, needless_range_loop allow). All 42 plan checkboxes marked [x]. Flagged follow-ups: real pixel-art textures + audio files (placeholders in use), HUD glyph text, door/push-wall slide visuals. Marked Code Generation complete in aidlc-state.md.
+**Context**: CONSTRUCTION - Code Generation complete and verified. Presenting for approval. Next: Build and Test.
+
+---
