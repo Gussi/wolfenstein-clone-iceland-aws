@@ -1,0 +1,19 @@
+{
+  "name": "pots-and-parliament",
+  "version": "0.1.0",
+  "description": "A nonlethal Wolfenstein-3D-style raycaster satirizing Icelandic institutional dysfunction.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.1",
+    "typescript": "^5.5.4",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}
