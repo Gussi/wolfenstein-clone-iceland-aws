@@ -23,6 +23,7 @@ export const SPRITE_CULL_DISTANCE = 14;
 // ---------------------------------------------------------------------------
 export const MOVE_SPEED = 3.0; // grid cells / second
 export const ROTATION_SPEED = 0.003; // radians / pixel of mouse movement
+export const KEYBOARD_TURN_SPEED = 2.4; // radians / second (arrow-key look)
 export const COLLISION_RADIUS = 0.2; // grid units
 export const MAX_HEALTH = 100;
 export const INTERACTION_RANGE = 1.2; // grid units
@@ -76,6 +77,7 @@ export const SCORE_LEVEL_COMPLETE = 100;
 // ---------------------------------------------------------------------------
 // Flow timing
 // ---------------------------------------------------------------------------
+export const BLESSING_DURATION = 4.0; // seconds the "Guð Blessi Ísland" screen shows
 export const INTRO_DURATION = 5.0; // seconds intro text shows
 export const GAME_OVER_DURATION = 1.5; // seconds "give up" animation
 
@@ -89,4 +91,14 @@ export const ENEMY_TAUNTS: readonly string[] = [
   'Komdu aftur á mánudag!', // "Come back Monday!"
   'Ertu með tilvísun?', // "Do you have a reference?"
 ];
-export const TAUNT_DISPLAY_TIME = 1.5; // seconds
+
+// Clerk enemy taunts (a weary, passive-aggressive civil servant).
+export const CLERK_TAUNTS: readonly string[] = [
+  'Ég er að fara í kaffi.', // "I'm going on a coffee break."
+  'Tölvan er niðri.', // "The computer is down."
+  'Þú þarft að bóka tíma.', // "You need to book an appointment."
+  'Það er ekki á mínu borði.', // "That's not on my desk."
+  'Næsti, takk!', // "Next, please!"
+  'Hefurðu fyllt út eyðublað 27-B?', // "Have you filled out form 27-B?"
+];
+export const TAUNT_DISPLAY_TIME = 3.5; // seconds

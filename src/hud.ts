@@ -91,7 +91,7 @@ export function drawHud(
   ctx.textAlign = 'right';
   ctx.fillStyle = ACCENT;
   ctx.font = `${Math.floor(barH * 0.18)}px "Courier New", monospace`;
-  ctx.fillText('WOODEN SPOON', w - pad, top + pad);
+  ctx.fillText('FRYING PAN', w - pad, top + pad);
   ctx.textAlign = 'left';
 }
 

@@ -9,12 +9,14 @@ import type { TextureSet } from './assets/textures';
 import { AudioManager } from './audio';
 import { resolveMelee } from './combat';
 import {
+  BLESSING_DURATION,
   COFFEE_HEAL,
   INTRO_DURATION,
   KLEINUR_HEAL,
   PICKUP_RADIUS,
   SCORE_LEVEL_COMPLETE,
   SCORE_PER_ENEMY,
+  TAUNT_DISPLAY_TIME,
 } from './constants';
 import {
   aliveEnemyCount,
@@ -44,7 +46,7 @@ import { createWeapon, startSwing, updateWeapon, weaponSpriteKey } from './weapo
 
 let pickupCounter = 0;
 
-/** Build a fresh game world from authored map data (status = 'intro'). */
+/** Build a fresh game world from authored map data (status = 'blessing'). */
 export function createGameWorld(mapJson: MapJSON): GameWorldState {
   const map = createMapState(mapJson);
   const player = createPlayer(mapJson.playerSpawn);
@@ -59,7 +61,7 @@ export function createGameWorld(mapJson: MapJSON): GameWorldState {
   }));
 
   return {
-    gameStatus: 'intro',
+    gameStatus: 'blessing',
     player,
     map,
     enemies,
@@ -76,6 +78,7 @@ export function createGameWorld(mapJson: MapJSON): GameWorldState {
       timeSeconds: 0,
     },
     time: { elapsed: 0, deltaTime: 0 },
+    blessingTimer: BLESSING_DURATION,
     introTimer: INTRO_DURATION,
     gameOverTimer: 0,
   };
@@ -104,6 +107,14 @@ export function updateWorld(
   }
 
   switch (state.gameStatus) {
+    case 'blessing': {
+      state.blessingTimer -= dt;
+      // The benediction lingers, then yields to the intro (skippable by input).
+      if (state.blessingTimer <= 0 || input.consumeAttack() || input.consumeInteract()) {
+        state.gameStatus = 'intro';
+      }
+      break;
+    }
     case 'intro': {
       state.introTimer -= dt;
       // Any attack/interact press (or timeout) starts the level.
@@ -254,7 +265,7 @@ const INTRO_LINES = [
   'Then the Hrun happened, and the building grew new wings.',
   'Climb to the top office. Bring kitchenware.',
   '',
-  'WASD move - Mouse look - Click: spoon - E: open/interact',
+  'WASD move - Mouse / Arrow keys look - Click: pan - E: open/interact',
   '',
   '(A volcano is erupting outside. Everyone is ignoring it.)',
 ];
@@ -281,7 +292,7 @@ export function renderWorld(state: GameWorldState, rc: RenderContext): void {
     if (!e.active || e.tauntTimer <= 0 || !e.tauntText) continue;
     const proj = projectToScreen(state, e.x, e.y, w, viewH);
     if (!proj.visible) continue;
-    drawTaunt(mainCtx, e.tauntText, proj.x, proj.y, e.tauntTimer / 1.5);
+    drawTaunt(mainCtx, e.tauntText, proj.x, proj.y, e.tauntTimer / TAUNT_DISPLAY_TIME);
   }
 
   // Weapon viewmodel (sits just above the HUD bar).
@@ -290,12 +301,28 @@ export function renderWorld(state: GameWorldState, rc: RenderContext): void {
   }
 
   // HUD bar.
-  if (state.gameStatus !== 'intro' && state.gameStatus !== 'loading') {
+  if (
+    state.gameStatus !== 'blessing' &&
+    state.gameStatus !== 'intro' &&
+    state.gameStatus !== 'loading'
+  ) {
     drawHud(mainCtx, state, sprites, w, h);
   }
 
   // Status overlays.
-  if (state.gameStatus === 'intro') {
+  if (state.gameStatus === 'blessing') {
+    // A solemn benediction screen before the intro briefing.
+    mainCtx.fillStyle = '#0a0a0c';
+    mainCtx.fillRect(0, 0, w, h);
+    drawCenterOverlay(
+      mainCtx,
+      w,
+      h,
+      'Guð Blessi Ísland',
+      ['God bless Iceland.', '', '...and may it bless this paperwork.'],
+      false,
+    );
+  } else if (state.gameStatus === 'intro') {
     drawCenterOverlay(mainCtx, w, h, 'Pots & Parliament', INTRO_LINES);
   } else if (state.gameStatus === 'paused') {
     drawCenterOverlay(mainCtx, w, h, 'Paused', ['Press Esc to resume']);

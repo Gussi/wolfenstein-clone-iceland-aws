@@ -38,7 +38,7 @@ export type EnemyState =
 
 export interface EnemyEntity {
   id: string;
-  type: 'redTape';
+  type: 'redTape' | 'clerk';
 
   x: number;
   y: number;
@@ -90,7 +90,7 @@ export interface MapJSON {
 }
 
 export interface EnemySpawn {
-  type: 'redTape';
+  type: 'redTape' | 'clerk';
   x: number;
   y: number;
 }
@@ -210,6 +210,7 @@ export interface LevelStats {
 // ---------------------------------------------------------------------------
 export type GameStatus =
   | 'loading'
+  | 'blessing'
   | 'intro'
   | 'playing'
   | 'paused'
@@ -227,6 +228,7 @@ export interface GameWorldState {
   score: ScoreState;
   levelStats: LevelStats;
   time: { elapsed: number; deltaTime: number };
+  blessingTimer: number;
   introTimer: number;
   gameOverTimer: number;
 }

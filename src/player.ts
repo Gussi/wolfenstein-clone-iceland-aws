@@ -8,6 +8,7 @@ import {
   CAMERA_PLANE_LENGTH,
   COLLISION_RADIUS,
   INTERACTION_RANGE,
+  KEYBOARD_TURN_SPEED,
   MAX_HEALTH,
   MOVE_SPEED,
   ROTATION_SPEED,
@@ -27,6 +28,9 @@ export interface MovementInput {
   backward: boolean;
   strafeLeft: boolean;
   strafeRight: boolean;
+  /** Arrow-key view turning (keyboard look). */
+  turnLeft: boolean;
+  turnRight: boolean;
   /** Mouse horizontal delta (pixels) accumulated this frame. */
   mouseDeltaX: number;
 }
@@ -72,7 +76,10 @@ export function updatePlayer(
   dt: number,
 ): void {
   if (!player.alive) return;
-  rotatePlayer(player, input.mouseDeltaX);
+  // Mouse-look plus arrow-key turning (converted into equivalent mouse pixels).
+  const keyboardTurn = (input.turnRight ? 1 : 0) - (input.turnLeft ? 1 : 0);
+  const turnPixels = (keyboardTurn * KEYBOARD_TURN_SPEED * dt) / ROTATION_SPEED;
+  rotatePlayer(player, input.mouseDeltaX + turnPixels);
 
   let moveX = 0;
   let moveY = 0;

@@ -6,6 +6,7 @@
 
 import { generateSpriteRegistry } from './assets/spriteGfx';
 import { generateTextures } from './assets/textures';
+import { loadImageAssets } from './assets/imageAssets';
 import { AudioManager } from './audio';
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from './constants';
 import {
@@ -67,6 +68,13 @@ async function main(): Promise<void> {
 
   const sprites = generateSpriteRegistry();
   setProgress(0.8);
+  await new Promise((r) => requestAnimationFrame(r));
+
+  // Bitmap atlases (walls, doors/elevator, clerk faces, frying pan).
+  const imageAssets = await loadImageAssets();
+  for (const [id, tex] of imageAssets.wallTextures) textures.set(id, tex);
+  for (const [key, tex] of imageAssets.sprites) sprites.set(key, tex);
+  setProgress(0.9);
   await new Promise((r) => requestAnimationFrame(r));
 
   // --- Build and validate the level. ---

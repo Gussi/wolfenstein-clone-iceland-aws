@@ -9,6 +9,7 @@ import { GRID_SIZE } from '../constants';
 import type {
   DecorationDef,
   DoorDef,
+  DoorOrientation,
   EnemySpawn,
   MapJSON,
   PickupSpawn,
@@ -18,6 +19,7 @@ import type {
 /** Wall texture IDs (0 = empty). See domain-entities.md texture atlas. */
 export const WALL = {
   EMPTY: 0,
+  // Procedural walls (assets/textures.ts).
   DOLERITE_DARK: 1,
   PLASTER_CREAM: 2,
   PLASTER_WAINSCOT: 3,
@@ -28,6 +30,23 @@ export const WALL = {
   DOLERITE_ARCH: 8,
   PLASTER_SCONCE: 9,
   CARPET_BLUE: 10,
+  // Bitmap walls sliced from walls-atlas.jpg (assets/imageAssets.ts), row-major.
+  WOOD_PLAQUE: 11,
+  WOOD_SCONCE2: 12,
+  MARBLE: 13,
+  BARRED_WINDOW: 14,
+  BOOKSHELF_IMG: 15,
+  CINDERBLOCK: 16,
+  WINDOW_VOLCANO_IMG: 17,
+  WOOD_LAMP: 18,
+  WOOD_PLAQUE2: 19,
+  ORNATE_GOLD: 20,
+  // Bitmap pass-through doors / elevator sliced from doors-atlas.jpg.
+  DOOR_OFFICE: 21,
+  DOOR_ELEVATOR: 22,
+  DOOR_VAULT: 23,
+  DOOR_ORNATE: 24,
+  DOOR_DARK: 25,
 } as const;
 
 export interface ValidationResult {
@@ -154,26 +173,31 @@ function assembleLevel0(size: number, rand: () => number): MapJSON {
     if (x > 0 && y > 0 && x < size - 1 && y < size - 1) grid[y][x] = t;
   };
 
-  // Scatter windows (with the recurring volcano gag) along the top border.
+  // Scatter windows along the top border: the recurring erupting-volcano gag,
+  // now using the bitmap window (with blinds) alongside the procedural one.
   for (let x = 3; x < size - 3; x += 5) {
-    grid[0][x] = WALL.WINDOW_VOLCANO;
+    grid[0][x] = WALL.WINDOW_VOLCANO_IMG;
     grid[0][x + 1] = WALL.WINDOW_VOLCANO;
   }
-  // Portraits along the bottom border.
+  // Portraits and the odd boarded-up (barred) window along the bottom border.
   for (let x = 4; x < size - 4; x += 6) {
     grid[size - 1][x] = WALL.PORTRAIT_WALL;
+    grid[size - 1][x + 2] = WALL.BARRED_WINDOW;
   }
 
-  // Interior partition walls forming a grid of committee rooms.
+  // Interior partition walls forming a grid of committee rooms, each clad in a
+  // different material so the new wall textures are all on display.
   // Vertical partitions at x = 8, 16, 24 ; horizontal at y = 8, 16, 24.
   const partitionsX = [8, 16, 24];
   const partitionsY = [8, 16, 24];
-  for (const px of partitionsX) {
-    for (let y = 1; y < size - 1; y++) setWall(px, y, WALL.PLASTER_WAINSCOT);
-  }
-  for (const py of partitionsY) {
-    for (let x = 1; x < size - 1; x++) setWall(x, py, WALL.PLASTER_CREAM);
-  }
+  const vClad = [WALL.MARBLE, WALL.PLASTER_WAINSCOT, WALL.CINDERBLOCK];
+  const hClad = [WALL.PLASTER_CREAM, WALL.MARBLE, WALL.CINDERBLOCK];
+  partitionsX.forEach((px, i) => {
+    for (let y = 1; y < size - 1; y++) setWall(px, y, vClad[i]);
+  });
+  partitionsY.forEach((py, i) => {
+    for (let x = 1; x < size - 1; x++) setWall(x, py, hClad[i]);
+  });
 
   // Carve doorways through partitions so all rooms connect.
   const carve = (x: number, y: number) => setWall(x, y, WALL.EMPTY);
@@ -192,25 +216,30 @@ function assembleLevel0(size: number, rand: () => number): MapJSON {
     carve(28, py);
   }
 
-  // A couple of decorative bookshelf / sconce accents inside rooms.
-  setWall(2, 2, WALL.BOOKSHELF);
-  setWall(size - 3, 2, WALL.PLASTER_SCONCE);
-  setWall(2, size - 3, WALL.PLASTER_SCONCE);
+  // Decorative accents inside rooms (a tour of the wall atlas).
+  setWall(2, 2, WALL.BOOKSHELF_IMG);
+  setWall(3, 2, WALL.WOOD_PLAQUE);
+  setWall(size - 3, 2, WALL.WOOD_SCONCE2);
+  setWall(size - 4, 2, WALL.WOOD_LAMP);
+  setWall(2, size - 3, WALL.WOOD_PLAQUE2);
+  setWall(size - 3, size - 3, WALL.ORNATE_GOLD);
+  setWall(14, 14, WALL.BOOKSHELF);
+  setWall(18, 18, WALL.PLASTER_SCONCE);
 
-  // --- Door: an interactive committee door on the x=8 partition at y=4. ---
-  // Re-solidify a single cell as the door tile.
-  const doorX = 8;
-  const doorY = 12;
-  setWall(doorX, doorY, WALL.COMMITTEE_DOOR);
-  const doors: DoorDef[] = [
-    {
-      id: 'door-committee-1',
-      x: doorX,
-      y: doorY,
-      textureId: WALL.COMMITTEE_DOOR,
-      orientation: 'vertical',
-    },
+  // --- Pass-through doors and an elevator on partition openings. ---
+  // Each door cell is solid (its texture) until the player opens it with E.
+  const doorDefs: Array<[string, number, number, number, DoorOrientation]> = [
+    ['door-committee-1', 8, 12, WALL.COMMITTEE_DOOR, 'vertical'],
+    ['door-office', 8, 4, WALL.DOOR_OFFICE, 'vertical'],
+    ['door-elevator', 16, 20, WALL.DOOR_ELEVATOR, 'vertical'],
+    ['door-vault', 24, 12, WALL.DOOR_VAULT, 'vertical'],
+    ['door-ornate', 12, 8, WALL.DOOR_ORNATE, 'horizontal'],
+    ['door-dark', 20, 16, WALL.DOOR_DARK, 'horizontal'],
   ];
+  const doors: DoorDef[] = doorDefs.map(([id, x, y, textureId, orientation]) => {
+    setWall(x, y, textureId);
+    return { id, x, y, textureId, orientation };
+  });
 
   // --- Push-wall secret: a hidden "cronyism back room" behind the SE wall. ---
   // Create a small sealed room in the bottom-right, with a camouflaged
@@ -233,9 +262,9 @@ function assembleLevel0(size: number, rand: () => number): MapJSON {
   // --- Player spawn: top-left room, facing east (into the building). ---
   const playerSpawn = { x: 3, y: 3, angle: 0 };
 
-  // --- Enemies: scatter ~32 Red Tape in open cells away from spawn. ---
+  // --- Enemies: scatter Red Tape and the new Committee Clerk in open cells. ---
   const enemies: EnemySpawn[] = [];
-  const wantEnemies = 32;
+  const wantEnemies = 34;
   let guard = 0;
   while (enemies.length < wantEnemies && guard < 5000) {
     guard++;
@@ -246,7 +275,9 @@ function assembleLevel0(size: number, rand: () => number): MapJSON {
     const dx = ex - playerSpawn.x;
     const dy = ey - playerSpawn.y;
     if (dx * dx + dy * dy < 25) continue; // 5-cell buffer
-    enemies.push({ type: 'redTape', x: ex, y: ey });
+    // Roughly every third spawn is a Clerk; the rest are Red Tape.
+    const type = enemies.length % 3 === 0 ? 'clerk' : 'redTape';
+    enemies.push({ type, x: ex, y: ey });
   }
 
   // --- Pickups: coffee scattered, a couple of kleinur in deeper rooms. ---

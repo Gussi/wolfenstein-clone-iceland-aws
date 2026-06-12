@@ -48,7 +48,11 @@ export class InputManager {
     }
     this.keys.add(code);
     // Prevent the page from scrolling on movement / space.
-    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown'].includes(code)) {
+    if (
+      ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
+        code,
+      )
+    ) {
       e.preventDefault();
     }
   };
@@ -81,6 +85,8 @@ export class InputManager {
       backward: this.keys.has('KeyS') || this.keys.has('ArrowDown'),
       strafeLeft: this.keys.has('KeyA'),
       strafeRight: this.keys.has('KeyD'),
+      turnLeft: this.keys.has('ArrowLeft'),
+      turnRight: this.keys.has('ArrowRight'),
       mouseDeltaX: this.mouseDeltaX,
     };
     this.mouseDeltaX = 0;

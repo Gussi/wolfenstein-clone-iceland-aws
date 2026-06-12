@@ -7,6 +7,7 @@
 import { slideMove } from './collision';
 import {
   ALERT_DURATION,
+  CLERK_TAUNTS,
   DETECTION_RANGE,
   DISPERSE_DURATION,
   ENEMY_ATTACK_COOLDOWN,
@@ -29,7 +30,7 @@ let enemyCounter = 0;
 export function createEnemy(spawn: EnemySpawn): EnemyEntity {
   return {
     id: `enemy-${enemyCounter++}`,
-    type: 'redTape',
+    type: spawn.type,
     x: spawn.x + 0.5,
     y: spawn.y + 0.5,
     state: 'idle',
@@ -99,7 +100,8 @@ export interface EnemyUpdateResult {
 function assignTaunt(enemy: EnemyEntity): void {
   if (enemy.hasTaunted) return;
   enemy.hasTaunted = true;
-  enemy.tauntText = ENEMY_TAUNTS[Math.floor(Math.random() * ENEMY_TAUNTS.length)];
+  const taunts = enemy.type === 'clerk' ? CLERK_TAUNTS : ENEMY_TAUNTS;
+  enemy.tauntText = taunts[Math.floor(Math.random() * taunts.length)];
   enemy.tauntTimer = TAUNT_DISPLAY_TIME;
 }
 
@@ -221,6 +223,7 @@ export function aliveEnemyCount(enemies: EnemyEntity[]): number {
 
 /** Sprite key for an enemy's current visual state. */
 export function enemySpriteKey(enemy: EnemyEntity): string {
+  if (enemy.type === 'clerk') return clerkSpriteKey(enemy);
   switch (enemy.state) {
     case 'attack':
       return 'redTape_attack';
@@ -232,5 +235,25 @@ export function enemySpriteKey(enemy: EnemyEntity): string {
     }
     default:
       return enemy.animationFrame === 0 ? 'redTape_walk0' : 'redTape_walk1';
+  }
+}
+
+/** Sprite key for the Clerk enemy, whose face reflects its state/health. */
+function clerkSpriteKey(enemy: EnemyEntity): string {
+  switch (enemy.state) {
+    case 'attack':
+      return 'clerk_attack';
+    case 'alert':
+      return 'clerk_alert';
+    case 'stunned':
+      return 'clerk_stunned';
+    case 'dispersed': {
+      const phase = Math.min(2, Math.floor((enemy.stateTimer / DISPERSE_DURATION) * 3));
+      return `clerk_dispersed${phase}`;
+    }
+    default:
+      // Once roughed up (one stun point from dispersing) the clerk looks hurt.
+      if (enemy.health <= 1) return 'clerk_hurt';
+      return enemy.animationFrame === 0 ? 'clerk_walk0' : 'clerk_walk1';
   }
 }

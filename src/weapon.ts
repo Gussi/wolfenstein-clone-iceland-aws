@@ -57,7 +57,7 @@ export function updateWeapon(weapon: WeaponState, dt: number): void {
 
 /** Sprite key for the current weapon frame. */
 export function weaponSpriteKey(weapon: WeaponState): string {
-  if (weapon.animationPhase === 'swinging') return `spoon_swing${weapon.frameIndex}`;
-  if (weapon.animationPhase === 'recovering') return 'spoon_swing2';
-  return 'spoon_idle';
+  if (weapon.animationPhase === 'swinging') return `pan_swing${weapon.frameIndex}`;
+  if (weapon.animationPhase === 'recovering') return 'pan_swing2';
+  return 'pan_idle';
 }
