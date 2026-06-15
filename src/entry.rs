@@ -3,7 +3,7 @@
 
 use crate::app::App;
 use crate::boundary::{AssetSource, Sound, TextureSet};
-use crate::platform::{BrowserAssets, BrowserInput, CanvasSurface, WebAudio};
+use crate::platform::{BrowserAssets, BrowserInput, CanvasSurface, WebAudio, decode_sprite_sheet};
 use crate::world::World;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -57,9 +57,14 @@ async fn run() -> Result<(), JsValue> {
     let world = World::load(&level_json)
         .map_err(|e| JsValue::from_str(&format!("level parse failed: {e}")))?;
 
-    // Textures: programmatic placeholders until final pixel art is supplied
-    // (see assets/README.md).
-    let textures = TextureSet::placeholder();
+    // Textures: decode sprite sheets, fall back to placeholders on failure.
+    let textures = match load_textures(&assets).await {
+        Ok(ts) => ts,
+        Err(e) => {
+            web_sys::console::warn_1(&format!("texture load failed ({e}), using placeholders").into());
+            TextureSet::placeholder()
+        }
+    };
 
     // Audio is best-effort; the game is fully playable in silence.
     if let Ok(bytes) = assets.load_bytes(MUSIC_URL).await {
@@ -93,4 +98,25 @@ fn request_animation_frame(f: &Closure<dyn FnMut(f64)>) {
         .expect("no window")
         .request_animation_frame(f.as_ref().unchecked_ref())
         .expect("requestAnimationFrame failed");
+}
+
+async fn load_textures(assets: &BrowserAssets) -> Result<TextureSet, String> {
+    let walls_png = assets.load_bytes("assets/textures/walls-sprite-64x64.png").await.map_err(|e| e.to_string())?;
+    let doors_png = assets.load_bytes("assets/textures/doors-sprite-64x64.png").await.map_err(|e| e.to_string())?;
+
+    let mut walls = decode_sprite_sheet(&walls_png, 64)?;
+    let doors = decode_sprite_sheet(&doors_png, 64)?;
+
+    // Override CommitteeDoor (index 3) with the first door tile.
+    if let Some(door_tile) = doors.into_iter().next() {
+        if walls.len() > 3 {
+            walls[3] = door_tile;
+        }
+    }
+
+    Ok(TextureSet::new(
+        walls,
+        TextureSet::placeholder_sprites_vec(),
+        TextureSet::placeholder_hud_vec(),
+    ))
 }

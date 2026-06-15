@@ -241,6 +241,16 @@ impl TextureSet {
         let hud = placeholder_hud();
         Self::new(walls, sprites, hud)
     }
+
+    /// Placeholder sprite textures only (for partial asset loading).
+    pub fn placeholder_sprites_vec() -> Vec<TextureImage> {
+        placeholder_sprites()
+    }
+
+    /// Placeholder HUD textures only (for partial asset loading).
+    pub fn placeholder_hud_vec() -> Vec<TextureImage> {
+        placeholder_hud()
+    }
 }
 
 /// Manifest mapping logical asset ids to URLs, used by the browser loader.
