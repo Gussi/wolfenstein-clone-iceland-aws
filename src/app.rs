@@ -259,15 +259,17 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
         }
 
         // Health and score labels on the HUD bar.
-        let bar_y = h * 0.84;
-        self.surface.draw_text(
-            &format!("HP: {}", self.world.player.health),
-            80.0, bar_y, 14.0, "#ffffff",
-        );
-        self.surface.draw_text(
-            &format!("Score: {}", self.world.score.connections),
-            w - 80.0, bar_y, 14.0, "#ffffff",
-        );
+        if !matches!(self.world.status, GameStatus::Intro { .. }) {
+            let bar_y = h * 0.84 + 6.0;
+            self.surface.draw_text(
+                &format!("HP: {}", self.world.player.health),
+                80.0, bar_y, 21.0, "#ffffff",
+            );
+            self.surface.draw_text(
+                &format!("Score: {}", self.world.score.connections),
+                w - 80.0, bar_y, 21.0, "#ffffff",
+            );
+        }
     }
 
     fn build_hud_view(&self) -> HudView {
