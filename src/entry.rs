@@ -3,7 +3,7 @@
 
 use crate::app::App;
 use crate::boundary::{AssetSource, Sound, TextureSet};
-use crate::platform::{BrowserAssets, BrowserInput, CanvasSurface, WebAudio, decode_sprite_sheet};
+use crate::platform::{BrowserAssets, BrowserInput, CanvasSurface, WebAudio, decode_png, decode_sprite_sheet};
 use crate::world::World;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -76,8 +76,14 @@ async fn run() -> Result<(), JsValue> {
         }
     }
 
+    // Intro image (best-effort).
+    let intro_image = match assets.load_bytes("assets/textures/haarde.png").await {
+        Ok(bytes) => decode_png(&bytes).ok(),
+        Err(_) => None,
+    };
+
     let app = Rc::new(RefCell::new(App::new(
-        world, surface, audio, input, textures,
+        world, surface, audio, input, textures, intro_image,
     )));
 
     // requestAnimationFrame loop. `f` holds the closure; the closure reschedules

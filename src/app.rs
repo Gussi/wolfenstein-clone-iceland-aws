@@ -1,7 +1,7 @@
 //! The orchestrator: owns the `World` and the browser boundaries, and runs one
 //! frame per `requestAnimationFrame` callback (US-20, US-21, US-22).
 
-use crate::boundary::{AudioSink, InputSource, InputState, Sound, Surface, TextureSet};
+use crate::boundary::{AudioSink, InputSource, InputState, Sound, Surface, TextureImage, TextureSet};
 use crate::constants::{
     GAME_OVER_DURATION, INTRO_DURATION, MAX_HEALTH, SCORE_LEVEL_COMPLETE, SCORE_PER_ENEMY,
     SCORE_PER_SECRET, SCREEN_HEIGHT, SCREEN_WIDTH,
@@ -25,6 +25,7 @@ pub struct App<S: Surface, A: AudioSink, I: InputSource> {
     audio: A,
     input: I,
     textures: TextureSet,
+    intro_image: Option<TextureImage>,
     fb: Framebuffer,
     zbuffer: Vec<f32>,
     last_ms: Option<f64>,
@@ -32,7 +33,7 @@ pub struct App<S: Surface, A: AudioSink, I: InputSource> {
 }
 
 impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
-    pub fn new(mut world: World, surface: S, audio: A, input: I, textures: TextureSet) -> Self {
+    pub fn new(mut world: World, surface: S, audio: A, input: I, textures: TextureSet, intro_image: Option<TextureImage>) -> Self {
         world.status = GameStatus::Intro {
             remaining: INTRO_DURATION,
         };
@@ -42,6 +43,7 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
             audio,
             input,
             textures,
+            intro_image,
             fb: Framebuffer::new(SCREEN_WIDTH, SCREEN_HEIGHT),
             zbuffer: vec![0.0; SCREEN_WIDTH],
             last_ms: None,
@@ -78,10 +80,10 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
                     self.music_started = true;
                 }
                 let r = remaining - dt;
-                self.world.status = if input.dismiss || r <= 0.0 {
+                self.world.status = if input.attack {
                     GameStatus::Playing
                 } else {
-                    GameStatus::Intro { remaining: r }
+                    GameStatus::Intro { remaining: r.min(remaining) }
                 };
             }
             GameStatus::Playing => self.update_playing(dt, input),
@@ -186,6 +188,29 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
         if matches!(self.world.status, GameStatus::Loading) {
             return;
         }
+        if matches!(self.world.status, GameStatus::Intro { .. }) {
+            // Intro: black screen with portrait (aspect-fit).
+            if let Some(img) = &self.intro_image {
+                let fw = self.fb.width as f32;
+                let fh = self.fb.height as f32;
+                let scale = (fw / img.size as f32).min(fh / img.size as f32);
+                let dw = (img.size as f32 * scale) as i32;
+                let dh = dw; // square texture
+                let ox = (self.fb.width as i32 - dw) / 2;
+                let oy = (self.fb.height as i32 - dh) / 2;
+                for dy in 0..dh {
+                    for dx in 0..dw {
+                        let u = dx as f32 / dw as f32;
+                        let v = dy as f32 / dh as f32;
+                        let c = img.sample(u, v);
+                        if c[3] > 0 {
+                            self.fb.set((ox + dx) as usize, (oy + dy) as usize, c);
+                        }
+                    }
+                }
+            }
+            return;
+        }
         cast_walls(
             &self.world.player,
             &self.world.map,
@@ -206,7 +231,7 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
 
         match self.world.status {
             GameStatus::Intro { .. } => {
-                self.surface.draw_text("You just need to file one form...", cx, cy, 16.0, "#e8e0d0");
+                self.surface.draw_text("Guð blessi Ísland...", cx, cy + 40.0, 48.0, "#e8e0d0");
             }
             GameStatus::GameOver { .. } => {
                 self.surface.draw_text("You give up and go home...", cx, cy - 10.0, 16.0, "#e06050");
@@ -228,7 +253,7 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
                 }
             }
             GameStatus::Paused => {
-                self.surface.draw_text("PAUSED", cx, cy, 20.0, "#ffffff");
+                self.surface.draw_text("PAUSED", cx, cy, 40.0, "#ffffff");
             }
             _ => {}
         }
@@ -247,10 +272,6 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
 
     fn build_hud_view(&self) -> HudView {
         let overlay = match self.world.status {
-            GameStatus::Intro { remaining } => Some(Overlay::Text {
-                text: "You just need to file one form...".into(),
-                remaining,
-            }),
             GameStatus::GameOver { .. } => Some(Overlay::Text {
                 text: "You give up and go home...".into(),
                 remaining: 0.0,

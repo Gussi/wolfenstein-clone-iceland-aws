@@ -7,6 +7,7 @@ pub mod input;
 pub mod surface;
 
 pub use assets::BrowserAssets;
+pub use assets::decode_png;
 pub use assets::decode_sprite_sheet;
 pub use audio::WebAudio;
 pub use input::BrowserInput;

@@ -6,6 +6,38 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Response;
 
+/// Decode a PNG into a single RGBA `TextureImage` (padded to square if needed).
+pub fn decode_png(data: &[u8]) -> Result<TextureImage, String> {
+    let decoder = png::Decoder::new(data);
+    let mut reader = decoder.read_info().map_err(|e| e.to_string())?;
+    let mut buf = vec![0u8; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buf).map_err(|e| e.to_string())?;
+    let rgba = match info.color_type {
+        png::ColorType::Rgba => buf[..info.buffer_size()].to_vec(),
+        png::ColorType::Rgb => {
+            let rgb = &buf[..info.buffer_size()];
+            let mut out = Vec::with_capacity((rgb.len() / 3) * 4);
+            for chunk in rgb.chunks_exact(3) {
+                out.extend_from_slice(chunk);
+                out.push(255);
+            }
+            out
+        }
+        _ => return Err(format!("unsupported color type: {:?}", info.color_type)),
+    };
+    let (w, h) = (info.width as usize, info.height as usize);
+    let size = w.max(h);
+    let mut pixels = vec![0u8; size * size * 4];
+    let off_x = (size - w) / 2;
+    let off_y = (size - h) / 2;
+    for y in 0..h {
+        let src = y * w * 4;
+        let dst = ((off_y + y) * size + off_x) * 4;
+        pixels[dst..dst + w * 4].copy_from_slice(&rgba[src..src + w * 4]);
+    }
+    Ok(TextureImage::new(size, pixels))
+}
+
 /// Decode a PNG sprite sheet and slice it into `tile_size × tile_size` RGBA tiles (row-major order).
 pub fn decode_sprite_sheet(data: &[u8], tile_size: usize) -> Result<Vec<TextureImage>, String> {
     let decoder = png::Decoder::new(data);
