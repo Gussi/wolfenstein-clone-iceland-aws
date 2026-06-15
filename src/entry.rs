@@ -103,9 +103,11 @@ fn request_animation_frame(f: &Closure<dyn FnMut(f64)>) {
 async fn load_textures(assets: &BrowserAssets) -> Result<TextureSet, String> {
     let walls_png = assets.load_bytes("assets/textures/walls-sprite-64x64.png").await.map_err(|e| e.to_string())?;
     let doors_png = assets.load_bytes("assets/textures/doors-sprite-64x64.png").await.map_err(|e| e.to_string())?;
+    let face_png = assets.load_bytes("assets/textures/face-sprite-32x32.png").await.map_err(|e| e.to_string())?;
 
     let mut walls = decode_sprite_sheet(&walls_png, 64)?;
     let doors = decode_sprite_sheet(&doors_png, 64)?;
+    let faces = decode_sprite_sheet(&face_png, 32)?;
 
     // Override CommitteeDoor (index 3) with the first door tile.
     if let Some(door_tile) = doors.into_iter().next() {
@@ -114,9 +116,15 @@ async fn load_textures(assets: &BrowserAssets) -> Result<TextureSet, String> {
         }
     }
 
+    // Build HUD: use first 4 face tiles for face expressions, placeholders for spoons.
+    let mut hud = TextureSet::placeholder_hud_vec();
+    for (i, face) in faces.into_iter().take(4).enumerate() {
+        hud[i] = face;
+    }
+
     Ok(TextureSet::new(
         walls,
         TextureSet::placeholder_sprites_vec(),
-        TextureSet::placeholder_hud_vec(),
+        hud,
     ))
 }
