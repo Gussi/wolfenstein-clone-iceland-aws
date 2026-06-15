@@ -62,6 +62,7 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
         self.update(dt, &input);
         self.render();
         self.surface.present(&self.fb);
+        self.render_text();
     }
 
     pub fn status(&self) -> GameStatus {
@@ -195,6 +196,53 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
         render_sprites(&self.world, &self.textures, &mut self.fb, &self.zbuffer);
         let view = self.build_hud_view();
         render_hud(&view, &self.textures, &mut self.fb);
+    }
+
+    fn render_text(&mut self) {
+        let w = SCREEN_WIDTH as f64;
+        let h = SCREEN_HEIGHT as f64;
+        let cx = w / 2.0;
+        let cy = h / 2.0;
+
+        match self.world.status {
+            GameStatus::Intro { .. } => {
+                self.surface.draw_text("You just need to file one form...", cx, cy, 16.0, "#e8e0d0");
+            }
+            GameStatus::GameOver { .. } => {
+                self.surface.draw_text("You give up and go home...", cx, cy - 10.0, 16.0, "#e06050");
+                self.surface.draw_text("Press any key to restart", cx, cy + 14.0, 10.0, "#a0a0a0");
+            }
+            GameStatus::Victory => {
+                let s = &self.world.stats;
+                self.surface.draw_text("LEVEL COMPLETE", cx, cy - 24.0, 18.0, "#f0d060");
+                let line1 = format!("Dispersed: {}/{}", s.enemies_dispersed, s.total_enemies);
+                let line2 = format!("Secrets: {}/{}", s.secrets_found, s.total_secrets);
+                let line3 = format!("Time: {:.1}s", s.time_seconds);
+                self.surface.draw_text(&line1, cx, cy, 12.0, "#e0e0e0");
+                self.surface.draw_text(&line2, cx, cy + 16.0, 12.0, "#e0e0e0");
+                self.surface.draw_text(&line3, cx, cy + 32.0, 12.0, "#e0e0e0");
+            }
+            GameStatus::Playing => {
+                if let Some(t) = self.world.enemies.iter().find_map(|e| e.taunt) {
+                    self.surface.draw_text(t.text, cx, 20.0, 14.0, "#ff8888");
+                }
+            }
+            GameStatus::Paused => {
+                self.surface.draw_text("PAUSED", cx, cy, 20.0, "#ffffff");
+            }
+            _ => {}
+        }
+
+        // Health and score labels on the HUD bar.
+        let bar_y = h * 0.84;
+        self.surface.draw_text(
+            &format!("HP: {}", self.world.player.health),
+            80.0, bar_y, 14.0, "#ffffff",
+        );
+        self.surface.draw_text(
+            &format!("Score: {}", self.world.score.connections),
+            w - 80.0, bar_y, 14.0, "#ffffff",
+        );
     }
 
     fn build_hud_view(&self) -> HudView {

@@ -154,7 +154,7 @@ pub fn render_hud(view: &HudView, textures: &TextureSet, fb: &mut Framebuffer) {
         }
         Some(Overlay::Taunt { .. }) => {
             let banner_h = h / 12;
-            fill_rect(fb, 0, h / 6, w, banner_h, [30, 10, 10, 180]);
+            fill_rect(fb, 0, 4, w, banner_h, [30, 10, 10, 180]);
         }
         None => {}
     }

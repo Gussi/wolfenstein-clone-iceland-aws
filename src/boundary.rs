@@ -45,6 +45,8 @@ pub trait Surface {
     fn present(&mut self, fb: &Framebuffer);
     /// Logical display size changed.
     fn resize(&mut self, width: u32, height: u32);
+    /// Draw text on top of the presented frame. Called after `present`.
+    fn draw_text(&mut self, _text: &str, _x: f64, _y: f64, _size: f64, _color: &str) {}
 }
 
 // =========================================================================

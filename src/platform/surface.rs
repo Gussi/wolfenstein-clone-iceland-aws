@@ -39,4 +39,15 @@ impl Surface for CanvasSurface {
         // CSS handles scaling; the backing canvas stays at the internal
         // resolution, so there is nothing to do here.
     }
+
+    fn draw_text(&mut self, text: &str, x: f64, y: f64, size: f64, color: &str) {
+        self.ctx.set_font(&format!("bold {size}px monospace"));
+        self.ctx.set_text_align("center");
+        self.ctx.set_text_baseline("middle");
+        // Shadow for readability.
+        self.ctx.set_fill_style_str("black");
+        let _ = self.ctx.fill_text(text, x + 1.0, y + 1.0);
+        self.ctx.set_fill_style_str(color);
+        let _ = self.ctx.fill_text(text, x, y);
+    }
 }
