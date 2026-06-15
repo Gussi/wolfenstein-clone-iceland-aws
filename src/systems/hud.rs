@@ -66,6 +66,27 @@ pub fn render_hud(view: &HudView, textures: &TextureSet, fb: &mut Framebuffer) {
     let bar_h = (h as f32 * 0.18) as i32;
     let bar_y = h - bar_h;
 
+    // --- Weapon (behind the bar) ---
+    let spoon = textures.hud(HudId::spoon(view.weapon_frame));
+    let spoon_size = (h as f32 * 0.45) as i32;
+    let spoon_x = w / 2 - spoon_size / 2;
+    let bounce_offset = match view.weapon_frame {
+        1 => 8,
+        2 => 16,
+        3 => 10,
+        _ => 0,
+    };
+    let spoon_y = bar_y - spoon_size + bar_h / 4 + bounce_offset;
+    draw_sprite_scaled(
+        fb,
+        spoon.size,
+        |u, v| spoon.sample(u, v),
+        spoon_x,
+        spoon_y,
+        spoon_size,
+        spoon_size,
+    );
+
     // Bottom HUD bar background.
     fill_rect(fb, 0, bar_y, w, bar_h, [22, 20, 28, 255]);
     fill_rect(fb, 0, bar_y, w, 2, [70, 60, 90, 255]); // top edge highlight
@@ -127,21 +148,6 @@ pub fn render_hud(view: &HudView, textures: &TextureSet, fb: &mut Framebuffer) {
         face_y,
         face_size,
         face_size,
-    );
-
-    // --- Weapon (above the bar, centre) ---
-    let spoon = textures.hud(HudId::spoon(view.weapon_frame));
-    let spoon_size = (h as f32 * 0.45) as i32;
-    let spoon_x = w / 2 - spoon_size / 2;
-    let spoon_y = bar_y - spoon_size + bar_h / 4;
-    draw_sprite_scaled(
-        fb,
-        spoon.size,
-        |u, v| spoon.sample(u, v),
-        spoon_x,
-        spoon_y,
-        spoon_size,
-        spoon_size,
     );
 
     // --- Overlays ---
