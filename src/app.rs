@@ -234,15 +234,15 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
                 self.surface.draw_text("Guð blessi Ísland...", cx, cy + 40.0, 48.0, "#e8e0d0");
             }
             GameStatus::GameOver { .. } => {
-                self.surface.draw_text("You give up and go home...", cx, cy - 10.0, 16.0, "#e06050");
-                self.surface.draw_text("Press any key to restart", cx, cy + 14.0, 10.0, "#a0a0a0");
+                self.surface.draw_text("Þú gefst upp og ferð heim...", cx, cy - 10.0, 16.0, "#e06050");
+                self.surface.draw_text("Smelltu til að byrja aftur", cx, cy + 14.0, 10.0, "#a0a0a0");
             }
             GameStatus::Victory => {
                 let s = &self.world.stats;
-                self.surface.draw_text("LEVEL COMPLETE", cx, cy - 24.0, 18.0, "#f0d060");
-                let line1 = format!("Dispersed: {}/{}", s.enemies_dispersed, s.total_enemies);
-                let line2 = format!("Secrets: {}/{}", s.secrets_found, s.total_secrets);
-                let line3 = format!("Time: {:.1}s", s.time_seconds);
+                self.surface.draw_text("BORÐ LOKIÐ", cx, cy - 24.0, 18.0, "#f0d060");
+                let line1 = format!("Dreift: {}/{}", s.enemies_dispersed, s.total_enemies);
+                let line2 = format!("Leyndarmál: {}/{}", s.secrets_found, s.total_secrets);
+                let line3 = format!("Tími: {:.1}s", s.time_seconds);
                 self.surface.draw_text(&line1, cx, cy, 12.0, "#e0e0e0");
                 self.surface.draw_text(&line2, cx, cy + 16.0, 12.0, "#e0e0e0");
                 self.surface.draw_text(&line3, cx, cy + 32.0, 12.0, "#e0e0e0");
@@ -253,7 +253,7 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
                 }
             }
             GameStatus::Paused => {
-                self.surface.draw_text("PAUSED", cx, cy, 40.0, "#ffffff");
+                self.surface.draw_text("HLÉBIL", cx, cy, 40.0, "#ffffff");
             }
             _ => {}
         }
@@ -262,11 +262,11 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
         if !matches!(self.world.status, GameStatus::Intro { .. }) {
             let bar_y = h * 0.84 + 6.0;
             self.surface.draw_text(
-                &format!("HP: {}", self.world.player.health),
+                &format!("Líf: {}", self.world.player.health),
                 80.0, bar_y, 21.0, "#ffffff",
             );
             self.surface.draw_text(
-                &format!("Score: {}", self.world.score.connections),
+                &format!("Stig: {}", self.world.score.connections),
                 w - 80.0, bar_y, 21.0, "#ffffff",
             );
         }
@@ -275,7 +275,7 @@ impl<S: Surface, A: AudioSink, I: InputSource> App<S, A, I> {
     fn build_hud_view(&self) -> HudView {
         let overlay = match self.world.status {
             GameStatus::GameOver { .. } => Some(Overlay::Text {
-                text: "You give up and go home...".into(),
+                text: "Þú gefst upp og ferð heim...".into(),
                 remaining: 0.0,
             }),
             GameStatus::Victory => Some(Overlay::Stats(self.world.stats)),
